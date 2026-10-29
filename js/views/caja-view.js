@@ -11,7 +11,8 @@ import {
   formatCOP,
   roundQty,
   roundCOP,
-  calcularAreaM2
+  calcularAreaM2,
+  calcularVidrioPersonalizado
 } from "../services/inventario-service.js";
 import { watchClientes, crearCliente } from "../services/clientes-service.js";
 import {
@@ -242,23 +243,23 @@ export function mountCajaView(root) {
     );
   }
 
-  function agregarProductoAlCarrito(productoId, cantidadAgregar = 1, dimensiones = null) {
+  function agregarProductoAlCarrito(productoId, cantidadAgregar = 1, opcionesPersonalizadas = null) {
     hideFeedback();
     if (!cajaAbierta) {
       showFeedback("Debes abrir una caja antes de registrar ventas.", "danger");
-      return;
+      return false;
     }
 
     const prod = productos.find((p) => p.id === productoId);
     if (!prod) {
       showFeedback("Producto no encontrado en el inventario.", "danger");
-      return;
+      return false;
     }
 
     const cantSolicitada = roundQty(cantidadAgregar);
     if (!(cantSolicitada > 0)) {
       showFeedback("La cantidad debe ser mayor que cero.", "danger");
-      return;
+      return false;
     }
 
     const enCarrito = getCantidadEnCarrito(prod.id);
@@ -267,10 +268,13 @@ export function mountCajaView(root) {
         `No hay existencias suficientes para esta cantidad (${prod.nombre}: disponible ${prod.stock} ${prod.unidad}).`,
         "danger"
       );
-      return;
+      return false;
     }
 
-    // Si es producto estándar sin corte especial y ya está en el carrito, incrementar su cantidad
+    const dimensiones = opcionesPersonalizadas?.dimensiones || null;
+
+    // Si es un vidrio por medida personalizada, registrar siempre como línea independiente
+    // para no combinar piezas de dimensiones diferentes ni perder su detalle (Sección 4).
     const existingIndex = !dimensiones
       ? cart.findIndex((i) => i.productoId === prod.id && !i.dimensiones)
       : -1;
@@ -278,7 +282,21 @@ export function mountCajaView(root) {
     if (existingIndex >= 0) {
       cart[existingIndex].cantidad = roundQty(cart[existingIndex].cantidad + cantSolicitada);
       cart[existingIndex].precioUnitario = roundCOP(prod.precio);
+      cart[existingIndex].precioMaterial = roundCOP(cart[existingIndex].precioUnitario * cart[existingIndex].cantidad);
+      cart[existingIndex].subtotal = cart[existingIndex].precioMaterial;
     } else {
+      const precioUnitario =
+        opcionesPersonalizadas?.precioUnitario !== undefined
+          ? roundCOP(opcionesPersonalizadas.precioUnitario)
+          : roundCOP(prod.precio);
+      const precioMaterial =
+        opcionesPersonalizadas?.precioMaterial !== undefined
+          ? roundCOP(opcionesPersonalizadas.precioMaterial)
+          : roundCOP(precioUnitario * cantSolicitada);
+      const costosAdicionales = roundCOP(opcionesPersonalizadas?.costosAdicionales || 0);
+      const conceptoAdicional = String(opcionesPersonalizadas?.conceptoAdicional || "").trim();
+      const subtotal = roundCOP(precioMaterial + costosAdicionales);
+
       cart.push({
         lineId: `line-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
         productoId: prod.id,
@@ -286,12 +304,78 @@ export function mountCajaView(root) {
         nombre: prod.nombre,
         unidad: prod.unidad,
         permiteDecimal: Boolean(prod.permiteDecimal || prod.unidad === "m" || prod.unidad === "m²"),
-        precioUnitario: roundCOP(prod.precio),
+        precioUnitario,
+        precioAutorizado: precioUnitario !== roundCOP(prod.precio),
         cantidad: cantSolicitada,
+        precioMaterial,
+        costosAdicionales,
+        conceptoAdicional,
+        subtotal,
         dimensiones
       });
     }
 
+    renderCarrito();
+    return true;
+  }
+
+  function actualizarPiezasVidrioLinea(lineId, nuevasPiezas) {
+    hideFeedback();
+    const idx = cart.findIndex((i) => i.lineId === lineId);
+    if (idx === -1) return;
+
+    const item = cart[idx];
+    if (!item.dimensiones) return;
+
+    const prod = productos.find((p) => p.id === item.productoId);
+    if (!prod) return;
+
+    const piezasNum = Number(nuevasPiezas);
+    if (!Number.isInteger(piezasNum) || piezasNum < 1) {
+      showFeedback("La cantidad de piezas debe ser un número entero mayor o igual a 1.", "danger");
+      renderCarrito();
+      return;
+    }
+
+    const calc = calcularVidrioPersonalizado({
+      ancho: item.dimensiones.ancho ?? item.dimensiones.anchoCm,
+      largo: item.dimensiones.largo ?? item.dimensiones.altoCm,
+      unidadDimension: item.dimensiones.unidadDimension || "cm",
+      piezas: piezasNum,
+      precioM2: item.precioUnitario,
+      costosAdicionales: item.costosAdicionales || 0,
+      conceptoAdicional: item.conceptoAdicional || ""
+    });
+
+    const otrosMismoProd = roundQty(
+      cart
+        .filter((i) => i.productoId === item.productoId && i.lineId !== lineId)
+        .reduce((s, i) => s + i.cantidad, 0)
+    );
+    if (roundQty(otrosMismoProd + calc.areaTotal) > roundQty(prod.stock)) {
+      showFeedback(
+        `No hay existencias suficientes para ${piezasNum} piezas (${calc.areaTotal} m² requeridos; disponible: ${prod.stock} ${prod.unidad}).`,
+        "danger"
+      );
+      renderCarrito();
+      return;
+    }
+
+    cart[idx].dimensiones = {
+      ancho: calc.ancho,
+      largo: calc.largo,
+      unidadDimension: calc.unidadDimension,
+      anchoM: calc.anchoM,
+      largoM: calc.largoM,
+      anchoCm: roundQty(calc.anchoM * 100),
+      altoCm: roundQty(calc.largoM * 100),
+      piezas: calc.piezas,
+      areaPorPieza: calc.areaPorPieza,
+      areaTotal: calc.areaTotal
+    };
+    cart[idx].cantidad = calc.areaTotal;
+    cart[idx].precioMaterial = calc.precioMaterial;
+    cart[idx].subtotal = calc.precioFinalLinea;
     renderCarrito();
   }
 
@@ -301,6 +385,11 @@ export function mountCajaView(root) {
     if (idx === -1) return;
 
     const item = cart[idx];
+    if (item.dimensiones) {
+      actualizarPiezasVidrioLinea(lineId, nuevaCantidad);
+      return;
+    }
+
     const prod = productos.find((p) => p.id === item.productoId);
     if (!prod) return;
 
@@ -332,6 +421,8 @@ export function mountCajaView(root) {
 
     cart[idx].cantidad = cant;
     cart[idx].precioUnitario = roundCOP(prod.precio);
+    cart[idx].precioMaterial = roundCOP(cart[idx].precioUnitario * cant);
+    cart[idx].subtotal = cart[idx].precioMaterial;
     renderCarrito();
   }
 
@@ -378,11 +469,27 @@ export function mountCajaView(root) {
       emptyEl.classList.add("hidden");
       listEl.innerHTML = cart
         .map((item) => {
-          const subtotal = roundCOP(item.precioUnitario * item.cantidad);
-          const step = item.permiteDecimal ? "0.01" : "1";
-          const dimText = item.dimensiones
-            ? `<br><span class="unit">Corte: ${item.dimensiones.anchoCm}×${item.dimensiones.altoCm} cm (${item.dimensiones.piezas} pza)</span>`
-            : "";
+          const esMedida = Boolean(item.dimensiones);
+          const precioMaterial = roundCOP(item.precioMaterial ?? item.precioUnitario * item.cantidad);
+          const costosAdic = roundCOP(item.costosAdicionales || 0);
+          const subtotal = roundCOP(item.subtotal ?? precioMaterial + costosAdic);
+          const step = esMedida ? "1" : item.permiteDecimal ? "0.01" : "1";
+          const inputVal = esMedida ? item.dimensiones.piezas : item.cantidad;
+
+          let dimText = "";
+          if (esMedida) {
+            const d = item.dimensiones;
+            const uDim = d.unidadDimension || "cm";
+            const anchoVis = d.ancho ?? d.anchoCm;
+            const largoVis = d.largo ?? d.altoCm;
+            const areaPza = d.areaPorPieza ?? roundQty(item.cantidad / (d.piezas || 1));
+            const adicStr =
+              costosAdic > 0
+                ? `<br><span class="unit">Material: ${formatCOP(precioMaterial)} + Adic.: ${formatCOP(costosAdic)}${item.conceptoAdicional ? ` (${escapeHtml(item.conceptoAdicional)})` : ""}</span>`
+                : "";
+            dimText = `<br><span class="unit">Medida: <b>${anchoVis} × ${largoVis} ${escapeHtml(uDim)}</b> · ${d.piezas} pza (${areaPza} m²/pza = <b>${item.cantidad} m²</b>)</span>${adicStr}`;
+          }
+
           return `
             <li class="cart-item" data-line="${escapeHtml(item.lineId)}">
               <span class="name">
@@ -391,13 +498,13 @@ export function mountCajaView(root) {
                 ${dimText}
               </span>
               <span class="sub num">${formatCOP(subtotal)}</span>
-              <span class="qty">
+              <span class="qty" title="${esMedida ? "Cantidad de piezas de esta medida" : "Cantidad"}">
                 <button type="button" data-qty-dec="${escapeHtml(item.lineId)}" aria-label="Disminuir">−</button>
                 <input
                   type="number"
                   min="${step}"
                   step="${step}"
-                  value="${item.cantidad}"
+                  value="${inputVal}"
                   data-qty-input="${escapeHtml(item.lineId)}"
                   aria-label="Cantidad de ${escapeHtml(item.nombre)}"
                   style="width:54px; text-align:center; border:0; font-weight:600; font-size:.86rem"
@@ -605,16 +712,29 @@ export function mountCajaView(root) {
     if (!body || !modal) return;
 
     const filasProd = comp.items
-      .map(
-        (i) => `
+      .map((i) => {
+        let detalleMedida = "";
+        if (i.dimensiones) {
+          const d = i.dimensiones;
+          const uDim = d.unidadDimension || "cm";
+          const anchoVis = d.ancho ?? d.anchoCm;
+          const largoVis = d.largo ?? d.altoCm;
+          const areaPza = d.areaPorPieza ?? roundQty(i.cantidad / (d.piezas || 1));
+          const adic =
+            roundCOP(i.costosAdicionales || 0) > 0
+              ? `<br><small class="text-muted">Material: ${formatCOP(i.precioMaterial ?? i.precioUnitario * i.cantidad)} + Adic.: ${formatCOP(i.costosAdicionales)}${i.conceptoAdicional ? ` (${escapeHtml(i.conceptoAdicional)})` : ""}</small>`
+              : "";
+          detalleMedida = `<br><small class="text-muted">Medida: ${anchoVis} × ${largoVis} ${escapeHtml(uDim)} · ${d.piezas} pza (${areaPza} m²/pza · Total: ${i.cantidad} m²)</small>${adic}`;
+        }
+        return `
           <tr>
-            <td>${escapeHtml(i.nombre)} <small class="text-muted">(${escapeHtml(i.codigo)})</small></td>
+            <td>${escapeHtml(i.nombre)} <small class="text-muted">(${escapeHtml(i.codigo)})</small>${detalleMedida}</td>
             <td class="num">${i.cantidad} ${escapeHtml(i.unidad)}</td>
             <td class="num">${formatCOP(i.precioUnitario)}</td>
             <td class="num">${formatCOP(i.subtotal)}</td>
           </tr>
-        `
-      )
+        `;
+      })
       .join("");
 
     const filasPagos = comp.pagos
@@ -672,26 +792,49 @@ export function mountCajaView(root) {
     renderCatalogo();
   });
 
+  // Selección de producto en el catálogo:
+  // Si la unidad de venta es m² (vidrios y espejos), abrir formulario de medidas personalizadas.
+  // Si es unidad entera (u) o metro lineal (m), agregar directamente al carrito.
   $("#product-grid")?.addEventListener("click", (e) => {
     const card = e.target.closest("[data-add-prod]");
     if (!card || card.disabled) return;
-    agregarProductoAlCarrito(card.dataset.addProd, 1);
+    const prodId = card.dataset.addProd;
+    const prod = productos.find((p) => p.id === prodId);
+    if (!prod) return;
+
+    if (prod.unidad === "m²") {
+      abrirModalMedidas(prod.id);
+    } else {
+      agregarProductoAlCarrito(prod.id, 1);
+    }
   });
 
   $("#cart-items")?.addEventListener("click", (e) => {
     const inc = e.target.closest("[data-qty-inc]");
     if (inc) {
       const item = cart.find((i) => i.lineId === inc.dataset.qtyInc);
-      if (item) actualizarCantidadLinea(item.lineId, roundQty(item.cantidad + 1));
+      if (item) {
+        if (item.dimensiones) {
+          actualizarPiezasVidrioLinea(item.lineId, item.dimensiones.piezas + 1);
+        } else {
+          actualizarCantidadLinea(item.lineId, roundQty(item.cantidad + 1));
+        }
+      }
       return;
     }
     const dec = e.target.closest("[data-qty-dec]");
     if (dec) {
       const item = cart.find((i) => i.lineId === dec.dataset.qtyDec);
       if (item) {
-        const nueva = roundQty(item.cantidad - 1);
-        if (nueva <= 0) eliminarLineaCarrito(item.lineId);
-        else actualizarCantidadLinea(item.lineId, nueva);
+        if (item.dimensiones) {
+          const nuevasPiezas = item.dimensiones.piezas - 1;
+          if (nuevasPiezas <= 0) eliminarLineaCarrito(item.lineId);
+          else actualizarPiezasVidrioLinea(item.lineId, nuevasPiezas);
+        } else {
+          const nueva = roundQty(item.cantidad - 1);
+          if (nueva <= 0) eliminarLineaCarrito(item.lineId);
+          else actualizarCantidadLinea(item.lineId, nueva);
+        }
       }
       return;
     }
@@ -717,26 +860,101 @@ export function mountCajaView(root) {
     $(sel)?.addEventListener("change", recalcularResumenPago);
   });
 
-  // Abrir modal de calculadora de vidrio a medida
-  $("#btn-medida-vidrio")?.addEventListener("click", () => {
+  // Flujo de Venta de Vidrios por Medidas Personalizadas (m²)
+  function abrirModalMedidas(productoId = null) {
+    hideFeedback();
+    if (!cajaAbierta) {
+      showFeedback("Debes abrir una caja antes de registrar ventas.", "danger");
+      return;
+    }
+
+    const medSelect = $("#med-producto");
+    if (medSelect && productoId) {
+      medSelect.value = productoId;
+    }
+
+    const selProdId = medSelect?.value || productoId;
+    const prod = productos.find((p) => p.id === selProdId);
+    const precioInput = $("#med-precio-m2");
+    if (precioInput && prod) {
+      precioInput.value = prod.precio;
+      precioInput.disabled = !hasPermission("ventas.modificar_precio", getCurrentUser());
+    }
+
+    if ($("#med-costo-adicional")) $("#med-costo-adicional").value = "0";
+    if ($("#med-concepto-adicional")) $("#med-concepto-adicional").value = "";
+    if ($("#med-error")) $("#med-error").classList.add("hidden");
+
     $("#modal-medidas")?.classList.add("is-open");
+    actualizarCalculoMedidasModal();
+  }
+
+  $("#btn-medida-vidrio")?.addEventListener("click", () => {
+    abrirModalMedidas();
+  });
+
+  $("#med-producto")?.addEventListener("change", () => {
+    const prod = productos.find((p) => p.id === $("#med-producto")?.value);
+    const precioInput = $("#med-precio-m2");
+    if (precioInput && prod) {
+      precioInput.value = prod.precio;
+    }
+    actualizarCalculoMedidasModal();
+  });
+
+  $("#med-unidad")?.addEventListener("change", () => {
+    const u = $("#med-unidad")?.value || "m";
+    const step = u === "m" ? "0.01" : "1";
+    const min = u === "m" ? "0.05" : "5";
+    const anchoEl = $("#med-ancho");
+    const largoEl = $("#med-largo") || $("#med-alto");
+    if (anchoEl) {
+      anchoEl.step = step;
+      anchoEl.min = min;
+    }
+    if (largoEl) {
+      largoEl.step = step;
+      largoEl.min = min;
+    }
     actualizarCalculoMedidasModal();
   });
 
   function actualizarCalculoMedidasModal() {
-    const resEl = $("#med-area-resultado");
     const errEl = $("#med-error");
-    if (!resEl) return;
+    const btnConfirmar = $("#btn-confirmar-medidas");
     if (errEl) errEl.classList.add("hidden");
+
+    const prod = productos.find((p) => p.id === $("#med-producto")?.value);
+    const precioDefault = prod ? prod.precio : 0;
+    const precioInput = $("#med-precio-m2");
+    const rawPrecio = precioInput && precioInput.value !== "" ? Number(precioInput.value) : precioDefault;
+    const largoInput = $("#med-largo") || $("#med-alto");
+
     try {
-      const area = calcularAreaM2({
-        anchoCm: $("#med-ancho")?.value,
-        altoCm: $("#med-alto")?.value,
-        piezas: $("#med-piezas")?.value
+      const calc = calcularVidrioPersonalizado({
+        ancho: $("#med-ancho")?.value,
+        largo: largoInput?.value,
+        unidadDimension: $("#med-unidad")?.value || "m",
+        piezas: $("#med-piezas")?.value,
+        precioM2: rawPrecio,
+        costosAdicionales: $("#med-costo-adicional")?.value || 0,
+        conceptoAdicional: $("#med-concepto-adicional")?.value || ""
       });
-      resEl.textContent = `${area} m²`;
+
+      if ($("#med-area-pieza")) $("#med-area-pieza").textContent = `${calc.areaPorPieza} m²`;
+      if ($("#med-res-piezas")) $("#med-res-piezas").textContent = `${calc.piezas}`;
+      if ($("#med-area-resultado")) $("#med-area-resultado").textContent = `${calc.areaTotal} m²`;
+      if ($("#med-precio-material")) $("#med-precio-material").textContent = formatCOP(calc.precioMaterial);
+      if ($("#med-res-adicional")) $("#med-res-adicional").textContent = formatCOP(calc.costosAdicionales);
+      if ($("#med-precio-final")) $("#med-precio-final").textContent = formatCOP(calc.precioFinalLinea);
+      if (btnConfirmar) btnConfirmar.disabled = false;
     } catch (e) {
-      resEl.textContent = "0 m²";
+      if ($("#med-area-pieza")) $("#med-area-pieza").textContent = "0 m²";
+      if ($("#med-area-resultado")) $("#med-area-resultado").textContent = "0 m²";
+      if ($("#med-precio-material")) $("#med-precio-material").textContent = "$ 0";
+      if ($("#med-res-adicional")) $("#med-res-adicional").textContent = "$ 0";
+      if ($("#med-precio-final")) $("#med-precio-final").textContent = "$ 0";
+      if (btnConfirmar) btnConfirmar.disabled = true;
       if (errEl) {
         errEl.textContent = e.message;
         errEl.classList.remove("hidden");
@@ -744,7 +962,7 @@ export function mountCajaView(root) {
     }
   }
 
-  ["#med-ancho", "#med-alto", "#med-piezas"].forEach((sel) => {
+  ["#med-ancho", "#med-largo", "#med-alto", "#med-piezas", "#med-precio-m2", "#med-costo-adicional", "#med-concepto-adicional"].forEach((sel) => {
     $(sel)?.addEventListener("input", actualizarCalculoMedidasModal);
   });
 
@@ -754,12 +972,50 @@ export function mountCajaView(root) {
     if (errEl) errEl.classList.add("hidden");
     try {
       const prodId = $("#med-producto")?.value;
-      const anchoCm = Number($("#med-ancho")?.value);
-      const altoCm = Number($("#med-alto")?.value);
-      const piezas = Number($("#med-piezas")?.value);
-      const area = calcularAreaM2({ anchoCm, altoCm, piezas });
-      agregarProductoAlCarrito(prodId, area, { anchoCm, altoCm, piezas });
-      $("#modal-medidas")?.classList.remove("is-open");
+      const prod = productos.find((p) => p.id === prodId);
+      if (!prod) throw new Error("Selecciona un vidrio o espejo válido del inventario.");
+
+      const precioInput = $("#med-precio-m2");
+      const rawPrecio = precioInput && precioInput.value !== "" ? Number(precioInput.value) : prod.precio;
+      const puedeModificarPrecio = hasPermission("ventas.modificar_precio", getCurrentUser());
+      const precioAplicado = puedeModificarPrecio ? rawPrecio : prod.precio;
+      const largoInput = $("#med-largo") || $("#med-alto");
+
+      const calc = calcularVidrioPersonalizado({
+        ancho: $("#med-ancho")?.value,
+        largo: largoInput?.value,
+        unidadDimension: $("#med-unidad")?.value || "m",
+        piezas: $("#med-piezas")?.value,
+        precioM2: precioAplicado,
+        costosAdicionales: $("#med-costo-adicional")?.value || 0,
+        conceptoAdicional: $("#med-concepto-adicional")?.value || ""
+      });
+
+      const ok = agregarProductoAlCarrito(prodId, calc.areaTotal, {
+        precioUnitario: calc.precioM2,
+        precioMaterial: calc.precioMaterial,
+        costosAdicionales: calc.costosAdicionales,
+        conceptoAdicional: calc.conceptoAdicional,
+        dimensiones: {
+          ancho: calc.ancho,
+          largo: calc.largo,
+          unidadDimension: calc.unidadDimension,
+          anchoM: calc.anchoM,
+          largoM: calc.largoM,
+          anchoCm: roundQty(calc.anchoM * 100),
+          altoCm: roundQty(calc.largoM * 100),
+          piezas: calc.piezas,
+          areaPorPieza: calc.areaPorPieza,
+          areaTotal: calc.areaTotal
+        }
+      });
+
+      if (ok) {
+        $("#modal-medidas")?.classList.remove("is-open");
+      } else if (errEl && feedbackEl && !feedbackEl.classList.contains("hidden")) {
+        errEl.textContent = feedbackEl.textContent;
+        errEl.classList.remove("hidden");
+      }
     } catch (err) {
       if (errEl) {
         errEl.textContent = err.message;
@@ -1026,3 +1282,4 @@ export function mountCajaView(root) {
     unsubVentas();
   };
 }
+

@@ -12,6 +12,7 @@ import {
   listarProductos,
   filtrarCatalogo,
   calcularAreaM2,
+  calcularVidrioPersonalizado,
   roundQty
 } from "../js/services/inventario-service.js";
 import {
@@ -429,8 +430,165 @@ export async function runAll25Tests() {
     assert(typeof document !== "undefined", "Entorno DOM activo");
   });
 
-  // Dejar una caja abierta lista con datos limpios para uso interactivo tras correr el test
-  await abrirCaja({ montoInicial: 200000, observaciones: "Turno activo" }, adminUser);
+  // Dejar una caja abierta lista para probar los 7 escenarios obligatorios de Vidrios por Medidas Personalizadas
+  const cajaMedidas = await abrirCaja({ montoInicial: 200000, observaciones: "Turno activo" }, adminUser);
+
+  // 26. Vidrio personalizado: 1 m × 2 m a $85.000/m² = $170.000
+  await step(26, "Vidrio personalizado: 1 m × 2 m a $ 85.000/m² = $ 170.000", async () => {
+    const calc = calcularVidrioPersonalizado({
+      ancho: 1,
+      largo: 2,
+      unidadDimension: "m",
+      piezas: 1,
+      precioM2: 85000
+    });
+    assert(calc.areaPorPieza === 2, `Área por pieza esperada 2 m², obtenida ${calc.areaPorPieza}`);
+    assert(calc.areaTotal === 2, `Área total esperada 2 m², obtenida ${calc.areaTotal}`);
+    assert(calc.precioMaterial === 170000, `Precio material esperado 170000, obtenido ${calc.precioMaterial}`);
+    assert(calc.precioFinalLinea === 170000, `Precio final esperado 170000, obtenido ${calc.precioFinalLinea}`);
+  });
+
+  // 27. Vidrio personalizado: 2 piezas de 1 m × 2 m a $85.000/m² = $340.000
+  await step(27, "Vidrio personalizado: 2 piezas de 1 m × 2 m a $ 85.000/m² = $ 340.000", async () => {
+    const calc = calcularVidrioPersonalizado({
+      ancho: 1,
+      largo: 2,
+      unidadDimension: "m",
+      piezas: 2,
+      precioM2: 85000
+    });
+    assert(calc.areaPorPieza === 2, "Área por pieza debe ser 2 m²");
+    assert(calc.areaTotal === 4, `Área total esperada 4 m², obtenida ${calc.areaTotal}`);
+    assert(calc.precioFinalLinea === 340000, `Precio esperado 340000, obtenido ${calc.precioFinalLinea}`);
+  });
+
+  // 28. Vidrio personalizado: 100 cm × 200 cm debe producir el mismo resultado que 1 m × 2 m
+  await step(28, "Vidrio personalizado: 100 cm × 200 cm produce el mismo resultado que 1 m × 2 m ($ 170.000)", async () => {
+    const enMetros = calcularVidrioPersonalizado({
+      ancho: 1,
+      largo: 2,
+      unidadDimension: "m",
+      piezas: 1,
+      precioM2: 85000
+    });
+    const enCentimetros = calcularVidrioPersonalizado({
+      ancho: 100,
+      largo: 200,
+      unidadDimension: "cm",
+      piezas: 1,
+      precioM2: 85000
+    });
+    assert(enCentimetros.areaPorPieza === enMetros.areaPorPieza, "El área por pieza en cm y m debe ser idéntica");
+    assert(enCentimetros.areaTotal === enMetros.areaTotal, "El área total en cm y m debe ser idéntica");
+    assert(
+      enCentimetros.precioFinalLinea === enMetros.precioFinalLinea && enCentimetros.precioFinalLinea === 170000,
+      "El precio final en cm (100×200) y en m (1×2) debe ser $ 170.000"
+    );
+  });
+
+  // 29. Cambiar las dimensiones actualiza el precio automáticamente (y suma costos adicionales configurados)
+  await step(29, "Cambiar las dimensiones, piezas o costos adicionales actualiza el precio automáticamente", async () => {
+    const inicial = calcularVidrioPersonalizado({
+      ancho: 1,
+      largo: 1,
+      unidadDimension: "m",
+      piezas: 1,
+      precioM2: 85000
+    });
+    assert(inicial.precioFinalLinea === 85000, "1 m × 1 m debe costar $ 85.000");
+
+    const actualizado = calcularVidrioPersonalizado({
+      ancho: 1.5,
+      largo: 2,
+      unidadDimension: "m",
+      piezas: 1,
+      precioM2: 85000,
+      costosAdicionales: 15000,
+      conceptoAdicional: "Pulido y perforación"
+    });
+    assert(actualizado.areaTotal === 3, "1.5 m × 2 m debe dar 3 m²");
+    assert(actualizado.precioMaterial === 255000, "Precio del material debe actualizarse a $ 255.000");
+    assert(actualizado.precioFinalLinea === 270000, "Precio final con adicional ($ 15.000) debe ser $ 270.000");
+  });
+
+  // 30. Una medida cero o negativa debe ser rechazada
+  await step(30, "Rechazar medidas cero o negativas y cantidades de piezas inválidas", async () => {
+    await assertThrows(
+      () => calcularVidrioPersonalizado({ ancho: 0, largo: 2, unidadDimension: "m", piezas: 1, precioM2: 85000 }),
+      "ancho"
+    );
+    await assertThrows(
+      () => calcularVidrioPersonalizado({ ancho: 1, largo: -50, unidadDimension: "cm", piezas: 1, precioM2: 85000 }),
+      "largo"
+    );
+    await assertThrows(
+      () => calcularVidrioPersonalizado({ ancho: 1, largo: 2, unidadDimension: "m", piezas: 0, precioM2: 85000 }),
+      "piezas"
+    );
+  });
+
+  // 31. Agregar accesorios por unidades no activa dimensiones, y dos vidrios de distinta medida van en líneas separadas
+  await step(31, "Accesorios por unidad (u) no requieren dimensiones y 2 vidrios de distinta medida suman en líneas independientes", async () => {
+    const prodAccesorio = getDocById(COLLECTIONS.PRODUCTOS, "prod-bh010");
+    const prodVidrio = getDocById(COLLECTIONS.PRODUCTOS, "prod-vt006");
+    assert(prodAccesorio.unidad === "u", "Bisagra debe venderse por unidad (u)");
+    assert(prodVidrio.unidad === "m²", "Vidrio templado debe venderse por metro cuadrado (m²)");
+
+    const tot = calcularTotalesVenta([
+      {
+        productoId: "prod-vt006",
+        dimensiones: { ancho: 1, largo: 2, unidadDimension: "m", piezas: 1 },
+        costosAdicionales: 10000,
+        conceptoAdicional: "Pulido cantos"
+      },
+      {
+        productoId: "prod-vt006",
+        dimensiones: { ancho: 100, largo: 100, unidadDimension: "cm", piezas: 1 }
+      },
+      {
+        productoId: "prod-bh010",
+        cantidad: 2
+      }
+    ]);
+    assert(tot.lineas.length === 3, "Deben mantenerse 3 líneas independientes (2 vidrios de distinta medida + 1 accesorio)");
+    assert(tot.lineas[0].subtotal === 180000, "Vidrio 1 (2 m² + $ 10.000 pulido) debe ser $ 180.000");
+    assert(tot.lineas[1].subtotal === 85000, "Vidrio 2 (1 m²) debe ser $ 85.000");
+    assert(tot.lineas[2].subtotal === 36000, "2 bisagras deben sumar $ 36.000");
+    assert(tot.total === 301000, `Total combinado esperado $ 301.000, obtenido ${tot.total}`);
+  });
+
+  // 32. Las medidas, costos adicionales y precios deben conservarse después de confirmar la venta y en el comprobante
+  await step(32, "Conservar medidas, piezas, área total, precio/m² y costos adicionales tras confirmar la venta", async () => {
+    const stockAntes = getDocById(COLLECTIONS.PRODUCTOS, "prod-vt006").stock;
+    const ventaMedida = await registrarVenta(
+      {
+        cajaId: cajaMedidas.id,
+        items: [
+          {
+            productoId: "prod-vt006",
+            dimensiones: { ancho: 1, largo: 2, unidadDimension: "m", piezas: 2 },
+            costosAdicionales: 20000,
+            conceptoAdicional: "Perforación bisagras"
+          }
+        ],
+        pagos: [{ metodo: "Efectivo", importe: 360000 }],
+        idempotencyKey: "key-venta-medida-01"
+      },
+      adminUser
+    );
+    const stockDespues = getDocById(COLLECTIONS.PRODUCTOS, "prod-vt006").stock;
+    assert(stockDespues === roundQty(stockAntes - 4), "El inventario en m² debe descontar los 4 m² totales vendidos");
+    assert(ventaMedida.total === 360000, "Total de la venta (4 m² × $ 85.000 + $ 20.000) debe ser $ 360.000");
+
+    const lineaGuardada = ventaMedida.items[0];
+    assert(lineaGuardada.dimensiones.ancho === 1 && lineaGuardada.dimensiones.largo === 2, "Dimensiones 1×2 m deben persistir");
+    assert(lineaGuardada.dimensiones.piezas === 2 && lineaGuardada.dimensiones.areaTotal === 4, "Piezas (2) y área total (4 m²) deben persistir");
+    assert(lineaGuardada.precioUnitario === 85000 && lineaGuardada.precioMaterial === 340000, "Precio por m² y precio material deben persistir");
+    assert(lineaGuardada.costosAdicionales === 20000, "Costos adicionales deben persistir");
+
+    const comp = generarDatosComprobante(ventaMedida);
+    assert(comp.items[0].dimensiones.areaTotal === 4 && comp.items[0].subtotal === 360000, "El comprobante debe conservar las medidas y el importe final");
+  });
 
   return results.sort((a, b) => a.num - b.num);
 }
@@ -447,7 +605,7 @@ async function renderInBrowser() {
   const failed = list.length - passed;
 
   if (badgeEl) {
-    badgeEl.textContent = failed === 0 ? `25 / 25 Aprobadas` : `${failed} Fallidas`;
+    badgeEl.textContent = failed === 0 ? `${passed} / ${list.length} Aprobadas` : `${failed} Fallidas`;
     badgeEl.className = `badge ${failed === 0 ? "badge-success" : "badge-danger"}`;
   }
 
@@ -473,3 +631,4 @@ async function renderInBrowser() {
 
 document.getElementById("btn-run-tests")?.addEventListener("click", renderInBrowser);
 renderInBrowser();
+

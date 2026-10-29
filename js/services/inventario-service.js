@@ -41,17 +41,88 @@ export function formatCOP(value) {
   return `${sign}$ ${Math.abs(n).toLocaleString("es-CO")}`;
 }
 
-// Calcula área en m² a partir de dimensiones en centímetros y cantidad de piezas:
-// Área en m² = (ancho_cm / 100) * (alto_cm / 100) * piezas
-export function calcularAreaM2({ anchoCm, altoCm, piezas = 1 }) {
-  const ancho = Number(anchoCm);
-  const alto = Number(altoCm);
-  const cantPiezas = Number(piezas);
-  if (!(ancho > 0) || !(alto > 0) || !Number.isInteger(cantPiezas) || cantPiezas <= 0) {
-    throw new Error("Dimensiones inválidas: ingrese ancho (cm), alto (cm) y número entero de piezas mayores a cero.");
+// Calcula área por pieza, área total, precio del material y precio final para vidrios/espejos por dimensiones.
+// Soporta unidadDimension en metros ("m") o centímetros ("cm").
+// Fórmulas:
+//   Si unidadDimension === "cm": anchoM = ancho / 100, largoM = largo / 100
+//   Si unidadDimension === "m":  anchoM = ancho,       largoM = largo
+//   Área por pieza (m²) = anchoM * largoM
+//   Área total (m²)     = área por pieza * cantidadPiezas
+//   Precio del vidrio   = área total * precioM2
+//   Precio final línea  = precio del vidrio + costosAdicionales
+export function calcularVidrioPersonalizado({
+  ancho,
+  largo,
+  unidadDimension = "m",
+  piezas = 1,
+  precioM2 = 0,
+  costosAdicionales = 0,
+  conceptoAdicional = ""
+}) {
+  const w = Number(ancho);
+  const l = Number(largo);
+  const pzs = Number(piezas);
+  const precio = Number(precioM2);
+  const adicionales = Number(costosAdicionales || 0);
+
+  if (!Number.isFinite(w) || w <= 0 || !Number.isFinite(l) || l <= 0) {
+    throw new Error("Las dimensiones (ancho y largo) deben ser números mayores que cero.");
   }
-  const area = (ancho / 100) * (alto / 100) * cantPiezas;
-  return roundQty(area);
+  if (!Number.isInteger(pzs) || pzs <= 0) {
+    throw new Error("La cantidad de piezas debe ser un número entero mayor que cero.");
+  }
+  if (!["m", "cm"].includes(unidadDimension)) {
+    throw new Error("La unidad de las dimensiones debe ser metros (m) o centímetros (cm).");
+  }
+  if (!Number.isFinite(precio) || precio < 0) {
+    throw new Error("El precio por metro cuadrado no puede ser negativo.");
+  }
+  if (!Number.isFinite(adicionales) || adicionales < 0) {
+    throw new Error("Los costos adicionales no pueden ser negativos.");
+  }
+
+  const factor = unidadDimension === "cm" ? 0.01 : 1;
+  const anchoM = roundQty(w * factor);
+  const largoM = roundQty(l * factor);
+  const areaPorPieza = roundQty(anchoM * largoM);
+  const areaTotal = roundQty(areaPorPieza * pzs);
+
+  if (!(areaTotal > 0)) {
+    throw new Error("El área calculada debe ser mayor que cero.");
+  }
+
+  const precioM2Aplicado = roundCOP(precio);
+  const precioMaterial = roundCOP(areaTotal * precioM2Aplicado);
+  const costosAdicAplicados = roundCOP(adicionales);
+  const precioFinalLinea = roundCOP(precioMaterial + costosAdicAplicados);
+
+  return {
+    ancho: w,
+    largo: l,
+    unidadDimension,
+    anchoM,
+    largoM,
+    piezas: pzs,
+    areaPorPieza,
+    areaTotal,
+    precioM2: precioM2Aplicado,
+    precioMaterial,
+    costosAdicionales: costosAdicAplicados,
+    conceptoAdicional: String(conceptoAdicional || "").trim(),
+    precioFinalLinea
+  };
+}
+
+// Compatibilidad con llamadas que pasen anchoCm y altoCm
+export function calcularAreaM2({ anchoCm, altoCm, largoCm, piezas = 1 }) {
+  const res = calcularVidrioPersonalizado({
+    ancho: anchoCm,
+    largo: largoCm ?? altoCm,
+    unidadDimension: "cm",
+    piezas,
+    precioM2: 0
+  });
+  return res.areaTotal;
 }
 
 export function getEstadoStock(producto) {
@@ -202,3 +273,4 @@ export async function registrarMovimientoBodega({ productoId, tipo, cantidad, mo
     });
   });
 }
+

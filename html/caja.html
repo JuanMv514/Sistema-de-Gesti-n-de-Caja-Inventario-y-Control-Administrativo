@@ -340,37 +340,65 @@
           </div>
         </div>
 
-        <!-- Modal 3: Calculadora de corte de vidrio/espejo por dimensiones en cm (Sección 5) -->
+        <!-- Modal 3: Venta de vidrios y espejos por medidas personalizadas (m²) -->
         <div class="modal-overlay" id="modal-medidas" role="dialog" aria-modal="true" aria-labelledby="titulo-medidas">
           <div class="modal">
-            <div class="modal-header"><h3 id="titulo-medidas">Agregar vidrio o espejo a medida (m²)</h3><a class="modal-close" href="#" aria-label="Cerrar">×</a></div>
+            <div class="modal-header"><h3 id="titulo-medidas">Venta de vidrio / espejo por medidas personalizadas</h3><a class="modal-close" href="#" aria-label="Cerrar">×</a></div>
             <form id="form-medidas">
-              <div class="modal-body form-grid">
-                <div class="field full">
-                  <label class="label" for="med-producto">Producto en m²</label>
-                  <select class="select" id="med-producto" required></select>
+              <div class="modal-body">
+                <div class="form-grid">
+                  <div class="field full">
+                    <label class="label" for="med-producto">Producto y referencia (m²)</label>
+                    <select class="select" id="med-producto" required></select>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="med-unidad">Unidad de las dimensiones</label>
+                    <select class="select" id="med-unidad">
+                      <option value="m">Metros (m)</option>
+                      <option value="cm">Centímetros (cm)</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="med-piezas">Cantidad de piezas</label>
+                    <input class="input num" id="med-piezas" type="number" min="1" step="1" value="1" required>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="med-ancho">Ancho</label>
+                    <input class="input num" id="med-ancho" type="number" min="0.01" step="any" value="1" required>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="med-largo">Largo</label>
+                    <input class="input num" id="med-largo" type="number" min="0.01" step="any" value="2" required>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="med-precio-m2">Precio por m² (COP)</label>
+                    <input class="input num" id="med-precio-m2" type="number" min="0" step="1" required>
+                    <span class="help" id="med-precio-help">Precio oficial del inventario</span>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="med-costo-adicional">Costos adicionales (COP)</label>
+                    <input class="input num" id="med-costo-adicional" type="number" min="0" step="1" value="0">
+                  </div>
+                  <div class="field full">
+                    <label class="label" for="med-concepto-adicional">Detalle de costos adicionales (corte, pulido, perforación, transporte, instalación)</label>
+                    <input class="input" id="med-concepto-adicional" type="text" placeholder="Opcional (ej. Pulido canto plano + 2 perforaciones)">
+                  </div>
                 </div>
-                <div class="field">
-                  <label class="label" for="med-ancho">Ancho (cm)</label>
-                  <input class="input num" id="med-ancho" type="number" min="1" step="0.1" value="100" required>
+
+                <!-- Resumen en vivo de áreas e importes -->
+                <div class="summary" style="margin:1rem 0 0; padding:.85rem 1rem; background:var(--navy-50); border:1px solid var(--border); border-radius:var(--radius-sm)">
+                  <div class="summary-row"><span>Área calculada por pieza</span><b class="num" id="med-area-pieza">2 m²</b></div>
+                  <div class="summary-row"><span>Área total (<span id="med-res-piezas">1</span> pza)</span><b class="num" id="med-area-resultado">2 m²</b></div>
+                  <div class="summary-row"><span>Precio del material (área × precio/m²)</span><span class="num" id="med-precio-material">$ 170.000</span></div>
+                  <div class="summary-row"><span>Costos adicionales</span><span class="num" id="med-res-adicional">$ 0</span></div>
+                  <div class="summary-row total"><span>Precio final de la línea</span><span class="num" id="med-precio-final">$ 170.000</span></div>
                 </div>
-                <div class="field">
-                  <label class="label" for="med-alto">Alto (cm)</label>
-                  <input class="input num" id="med-alto" type="number" min="1" step="0.1" value="100" required>
-                </div>
-                <div class="field">
-                  <label class="label" for="med-piezas">Cantidad de piezas</label>
-                  <input class="input num" id="med-piezas" type="number" min="1" step="1" value="1" required>
-                </div>
-                <div class="field">
-                  <label class="label">Área total calculada</label>
-                  <div class="input num" id="med-area-resultado" style="background:var(--navy-50); font-weight:700">1 m²</div>
-                </div>
-                <p id="med-error" class="error-text full hidden" style="margin:0"></p>
+
+                <p id="med-error" class="error-text hidden" style="margin:.65rem 0 0"></p>
               </div>
               <div class="modal-footer">
                 <a class="btn btn-outline" href="#">Cancelar</a>
-                <button type="submit" class="btn btn-primary">Agregar al carrito</button>
+                <button type="submit" class="btn btn-primary" id="btn-confirmar-medidas">Agregar al carrito</button>
               </div>
             </form>
           </div>
