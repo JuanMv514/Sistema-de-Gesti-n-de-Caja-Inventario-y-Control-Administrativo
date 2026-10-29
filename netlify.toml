@@ -1,8 +1,43 @@
+# Configuración de despliegue estático para Netlify (Sección 16)
+# El proyecto utiliza HTML, CSS y JavaScript modular nativo (ES Modules) sin requerir transpilador.
+
 [build]
   publish = "."
 
-# SPA: cualquier ruta sirve index.html para que el router del cliente la resuelva
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Redirecciones amigables hacia las vistas del SPA
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from = "/dashboard"
+  to = "/index.html#/dashboard"
+  status = 200
+
+[[redirects]]
+  from = "/caja"
+  to = "/index.html#/caja"
+  status = 200
+
+[[redirects]]
+  from = "/inventario"
+  to = "/index.html#/inventario"
+  status = 200
+
+[[redirects]]
+  from = "/contabilidad"
+  to = "/index.html#/contabilidad"
+  status = 200
+
+[[redirects]]
+  from = "/reportes"
+  to = "/index.html#/reportes"
+  status = 200
+
+[[redirects]]
+  from = "/usuarios"
+  to = "/index.html#/usuarios"
   status = 200

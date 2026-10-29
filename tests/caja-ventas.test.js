@@ -5,16 +5,41 @@ import {
   COLLECTIONS,
   getCollection,
   getDocById,
-  resetDatabaseForTests
+  resetDatabaseForTests,
+  resetDatabaseEmpty,
+  runAtomicTransaction
 } from "../js/services/store.js";
-import { ROLES, hasPermission } from "../js/auth.js";
+import { ROLES, hasPermission, assertPermission } from "../js/auth.js";
+import {
+  getFirebaseStatus,
+  setSimulatedNetworkOffline,
+  setFirebaseConfigOverride
+} from "../js/firebase-config.js";
 import {
   listarProductos,
   filtrarCatalogo,
   calcularAreaM2,
   calcularVidrioPersonalizado,
+  crearProducto,
+  actualizarProducto,
+  cambiarEstadoProducto,
+  registrarMovimientoBodega,
   roundQty
 } from "../js/services/inventario-service.js";
+import {
+  registrarMovimientoContable,
+  calcularResumenContable,
+  TIPOS_CONTABLE
+} from "../js/services/contabilidad-service.js";
+import {
+  generarReportesConsolidados,
+  generarCSVReporte
+} from "../js/services/reportes-service.js";
+import {
+  crearUsuario,
+  actualizarUsuario,
+  autenticarUsuario
+} from "../js/services/usuarios-service.js";
 import {
   abrirCaja,
   cerrarCaja,
@@ -588,6 +613,201 @@ export async function runAll25Tests() {
 
     const comp = generarDatosComprobante(ventaMedida);
     assert(comp.items[0].dimensiones.areaTotal === 4 && comp.items[0].subtotal === 360000, "El comprobante debe conservar las medidas y el importe final");
+  });
+
+  // 33. Prueba 3 y 13 (Sección 15): Registro, edición, desactivación de productos e impedimento de venta de producto inactivo
+  await step(33, "Registrar, editar y desactivar un producto e impedir su venta cuando está inactivo", async () => {
+    const nuevoProd = await crearProducto(
+      {
+        codigo: "VT-010",
+        nombre: "Vidrio templado 10 mm",
+        descripcion: "Alta resistencia para fachadas",
+        categoria: "Vidrios",
+        unidad: "m²",
+        precioCompra: 95000,
+        precio: 145000,
+        stock: 15,
+        stockMinimo: 4
+      },
+      adminUser
+    );
+    assert(nuevoProd.precioCompra === 95000 && nuevoProd.precio === 145000, "Debe distinguir precio de compra y precio de venta");
+
+    const editado = await actualizarProducto(
+      nuevoProd.id,
+      { precio: 150000, stockMinimo: 5 },
+      adminUser
+    );
+    assert(editado.precio === 150000 && editado.stock === 15, "Actualizar datos maestros no debe alterar el stock sin movimiento");
+
+    // Desactivar producto y comprobar que no se puede vender
+    await cambiarEstadoProducto(nuevoProd.id, false, adminUser);
+    await assertThrows(
+      () =>
+        registrarVenta(
+          {
+            cajaId: cajaMedidas.id,
+            items: [
+              {
+                productoId: nuevoProd.id,
+                dimensiones: { ancho: 1, largo: 1, unidadDimension: "m", piezas: 1 }
+              }
+            ],
+            pagos: [{ metodo: "Efectivo", importe: 150000 }]
+          },
+          adminUser
+        ),
+      "no está disponible"
+    );
+
+    // Reactivar producto
+    await cambiarEstadoProducto(nuevoProd.id, true, adminUser);
+    assert(getDocById(COLLECTIONS.PRODUCTOS, nuevoProd.id).activo === true, "El producto debe reactivarse");
+  });
+
+  // 34. Prueba 9 y 11 (Sección 15): Entrada por compra con gasto en contabilidad y gasto en efectivo que afecta caja
+  await step(34, "Registrar entrada de inventario por compra y gasto en efectivo actualizando caja y contabilidad", async () => {
+    const arqueoAntes = calcularArqueoCaja(obtenerCajaAbierta());
+    // Registrar un gasto pagado desde el efectivo físico de la caja abierta
+    await registrarMovimientoContable(
+      {
+        tipo: TIPOS_CONTABLE.GASTO,
+        categoria: "Transporte y fletes",
+        concepto: "Flete entrega de vidrio templado",
+        monto: 30000,
+        metodoPago: "Efectivo",
+        afectaCajaFisica: true
+      },
+      adminUser
+    );
+    const arqueoDespues = calcularArqueoCaja(obtenerCajaAbierta());
+    assert(
+      arqueoDespues.efectivoEsperado === arqueoAntes.efectivoEsperado - 30000,
+      "Un gasto en efectivo desde caja debe descontar del efectivo esperado de la caja abierta"
+    );
+
+    // Entrada de inventario por compra con registro simultáneo en Contabilidad
+    const movCompra = await registrarMovimientoBodega(
+      {
+        productoId: "prod-si050",
+        tipo: "Entrada",
+        origen: "Entrada por compra",
+        cantidad: 12,
+        motivo: "Compra proveedor Sika Factura #901",
+        registrarGastoCompra: true,
+        metodoPagoCompra: "Transferencia",
+        costoTotalCompra: 122400
+      },
+      adminUser
+    );
+    assert(movCompra.stockNuevo === 12, "Silicona estructural debe pasar de 0 a 12 unidades");
+  });
+
+  // 35. Prueba 12 y 19 (Sección 15): Coherencia entre Dashboard, Caja, Inventario, Contabilidad y los 11 Reportes + CSV
+  await step(35, "Verificar coherencia de los 11 reportes obligatorios y exportación CSV con datos reales", async () => {
+    const rep = generarReportesConsolidados({});
+    const resCont = calcularResumenContable();
+    assert(rep.kpis.ingresosPeriodo === resCont.ingresos, "Ingresos de Reportes y Contabilidad deben coincidir");
+    assert(rep.kpis.gastosPeriodo === resCont.gastos, "Gastos de Reportes y Contabilidad deben coincidir");
+    assert(rep.ventasPorPeriodo.length >= 1, "Reporte 1 (Ventas por período) debe contener registros");
+    assert(rep.detalleVentas.length >= 1, "Reporte 2 (Detalle de ventas) debe contener líneas");
+    assert(rep.productosMasVendidos.length >= 1, "Reporte 3 (Productos más vendidos) debe estar calculado");
+    assert(rep.inventarioActual.length >= 8, "Reporte 4 (Inventario actual) debe listar el catálogo");
+    assert(rep.movimientosInventario.length >= 5, "Reporte 6 (Movimientos de inventario) debe reflejar el kardex");
+    assert(rep.ingresosYGastosPorCategoria.length >= 2, "Reporte 7 (Ingresos y gastos) debe agrupar categorías");
+    assert(rep.metodosDePago.length === 4, "Reporte 8 (Métodos de pago) debe detallar los métodos");
+    assert(rep.cierresDeCaja.length >= 1, "Reporte 9 (Cierres de caja) debe incluir el cierre histórico");
+    assert(rep.diferenciasEfectivo.length >= 1, "Reporte 10 (Diferencias de efectivo) debe detectar el descuadre de -$2.000");
+    assert(rep.anulacionesYDevoluciones.length >= 2, "Reporte 11 (Anulaciones y devoluciones) debe incluir anulación y devolución");
+
+    const csv = generarCSVReporte("mas_vendidos", rep);
+    assert(csv.includes("Vidrio templado 6 mm"), "El CSV exportado debe contener los datos reales");
+  });
+
+  // 36. Prueba 13 y 14 (Sección 15): Roles (Administrador, Cajero, Inventario, Contabilidad) y bloqueo de usuarios inactivos
+  await step(36, "Validar permisos por rol (Cajero, Inventario, Contabilidad) y bloquear cuentas desactivadas", async () => {
+    const cajeroRoleUser = { uid: "u-caj", email: "cajero@elcarmen.com", name: "Cajero", role: ROLES.CAJERO, activo: true };
+    const invRoleUser = { uid: "u-inv", email: "inv@elcarmen.com", name: "Bodega", role: ROLES.INVENTARIO, activo: true };
+
+    assert(hasPermission("ventas.registrar", cajeroRoleUser) === true, "Cajero puede registrar ventas");
+    assert(hasPermission("usuarios.gestionar", cajeroRoleUser) === false, "Cajero no puede gestionar usuarios");
+    assert(hasPermission("inventario.gestionar", invRoleUser) === true, "Rol Inventario puede gestionar productos");
+    assert(hasPermission("caja.abrir", invRoleUser) === false, "Rol Inventario no puede abrir caja");
+
+    // Crear un usuario y luego desactivarlo
+    const usrNuevo = await crearUsuario(
+      { nombre: "Operador Temporal", email: "temp@elcarmen.com", rol: ROLES.CAJERO },
+      adminUser
+    );
+    await actualizarUsuario({ id: usrNuevo.id, activo: false }, adminUser);
+
+    // Una cuenta inactiva debe ser bloqueada al intentar iniciar sesión
+    await assertThrows(
+      () => autenticarUsuario({ email: "temp@elcarmen.com", password: "password123" }),
+      "inactiva"
+    );
+    // Y tampoco tiene permisos activos
+    assert(
+      hasPermission("ventas.registrar", { uid: usrNuevo.uid, role: ROLES.CAJERO, activo: false }) === false,
+      "Usuario desactivado no debe conservar ningún permiso"
+    );
+  });
+
+  // 37. Prueba 2 y 16 (Sección 15): Estado de conexión Firebase y manejo de errores de red sin corromper datos
+  await step(37, "Detectar estado de Firebase y proteger la integridad ante errores de red", async () => {
+    const statusLocal = getFirebaseStatus();
+    assert(statusLocal.connected === false && statusLocal.mode === "local-pending", "Debe informar que Firebase está pendiente de configurar");
+
+    setFirebaseConfigOverride({
+      apiKey: "AIzaSyTestPublicKey123456",
+      authDomain: "elcarmen-prod.firebaseapp.com",
+      projectId: "elcarmen-prod",
+      appId: "1:123456:web:abcdef"
+    });
+    const statusConfigurado = getFirebaseStatus();
+    assert(statusConfigurado.connected === true && statusConfigurado.projectId === "elcarmen-prod", "Debe detectar configuración válida de Firebase");
+    setFirebaseConfigOverride(null);
+
+    // Simular caída de red y comprobar que una escritura se rechaza sin alterar datos
+    setSimulatedNetworkOffline(true);
+    await assertThrows(
+      () =>
+        registrarMovimientoContable(
+          { tipo: TIPOS_CONTABLE.GASTO, concepto: "Gasto durante corte de red", monto: 50000 },
+          adminUser
+        ),
+      "red"
+    );
+    setSimulatedNetworkOffline(false);
+  });
+
+  // 38. Prueba 17 (Sección 15): Protección frente a operaciones simultáneas conflictivas
+  await step(38, "Bloquear transacciones simultáneas conflictivas para evitar condiciones de carrera", async () => {
+    let falloSimultaneo = false;
+    const tx1 = runAtomicTransaction(async () => {
+      await new Promise((r) => setTimeout(r, 40));
+      return "ok1";
+    });
+    const tx2 = runAtomicTransaction(async () => "ok2").catch((err) => {
+      if (err.message.includes("simultánea") || err.message.includes("en curso")) {
+        falloSimultaneo = true;
+      }
+    });
+    await Promise.all([tx1, tx2]);
+    assert(falloSimultaneo === true, "La segunda transacción simultánea sobre el mismo candado debe rechazarse");
+  });
+
+  // 39. Prueba 1 (Sección 15): Carga inicial sin datos (sin inventar registros ni cifras)
+  await step(39, "Verificar carga inicial sin datos (colecciones vacías muestran $ 0 y 0 registros)", async () => {
+    resetDatabaseEmpty();
+    assert(getCollection(COLLECTIONS.PRODUCTOS).length === 0, "Productos debe estar vacío");
+    assert(getCollection(COLLECTIONS.VENTAS).length === 0, "Ventas debe estar vacío");
+    const repVacio = generarReportesConsolidados({});
+    assert(repVacio.kpis.totalVentasPeriodo === 0 && repVacio.kpis.valorBodegaVenta === 0, "Los KPIs sin datos deben ser $ 0");
+
+    // Restaurar datos de prueba y caja abierta para inspección interactiva
+    resetDatabaseForTests();
+    await abrirCaja({ montoInicial: 200000, observaciones: "Turno activo" }, adminUser);
   });
 
   return results.sort((a, b) => a.num - b.num);
