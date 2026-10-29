@@ -1,38 +1,46 @@
 // Controlador principal del SPA:
 // - Alterna entre #login-view y #dashboard-view sin recargar la página.
-// - Intercepta todos los enlaces a módulos (menú lateral, botones de acceso rápido, tarjetas).
-// - Gestiona la apertura/cierre de modales y el botón de impresión sin romper la ruta activa.
+// - Registra los controladores de vistas (Dashboard, Caja y Ventas, Inventario, Contabilidad, Reportes).
+// - Gestiona roles, permisos de ruta, modales e impresión.
 
-import { navigateTo, resolveRouteKey, getRouteFromLocation, DEFAULT_ROUTE } from "./router.js";
+import {
+  navigateTo,
+  resolveRouteKey,
+  getRouteFromLocation,
+  registerView,
+  DEFAULT_ROUTE
+} from "./router.js";
+import { getCurrentUser, setCurrentUser, ROLES, hasPermission } from "./auth.js";
+import { ensureSeedData } from "./services/store.js";
+import { mountCajaView } from "./views/caja-view.js";
+import {
+  mountInventarioView,
+  mountContabilidadView,
+  mountDashboardView,
+  mountReportesView
+} from "./views/other-views.js";
 
-const SESSION_KEY = "elcarmen_spa_session";
+// Registrar los controladores reactivos de cada módulo en el router
+registerView("dashboard", mountDashboardView);
+registerView("caja", mountCajaView);
+registerView("inventario", mountInventarioView);
+registerView("contabilidad", mountContabilidadView);
+registerView("reportes", mountReportesView);
 
 const loginView = document.getElementById("login-view");
 const dashboardView = document.getElementById("dashboard-view");
 const loginForm = document.getElementById("login-form");
 
-function getSession() {
+function hasActiveSession() {
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    return raw ? JSON.parse(raw) : null;
+    return Boolean(sessionStorage.getItem("elcarmen_spa_session"));
   } catch {
-    return null;
+    return false;
   }
 }
 
-function setSession(user) {
-  try {
-    if (user) sessionStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    else sessionStorage.removeItem(SESSION_KEY);
-  } catch {
-    // Ignorar si sessionStorage no está disponible
-  }
-}
-
-// Muestra #login-view y oculta #dashboard-view
 export function showLoginView() {
   if (!loginView || !dashboardView) {
-    // Si estamos en html/<modulo>.html sin #login-view, volver a index.html
     window.location.href = "../index.html";
     return;
   }
@@ -42,7 +50,6 @@ export function showLoginView() {
   window.history.replaceState({}, "", window.location.pathname);
 }
 
-// Oculta #login-view, muestra #dashboard-view y carga el módulo correspondiente
 export async function showDashboardView(user, initialRoute) {
   if (loginView && dashboardView) {
     loginView.classList.add("hidden");
@@ -54,6 +61,11 @@ export async function showDashboardView(user, initialRoute) {
   if (user && nameEl) nameEl.textContent = user.name;
   if (user && roleEl) roleEl.textContent = `Rol: ${user.role}`;
 
+  // Ocultar módulos exclusivos de Administrador si el usuario es Empleado
+  document.querySelectorAll("[data-role='admin']").forEach((el) => {
+    el.classList.toggle("hidden", !hasPermission("usuarios.gestionar", user));
+  });
+
   const target = initialRoute || getRouteFromLocation() || DEFAULT_ROUTE;
   await navigateTo(target, { replace: true });
 }
@@ -63,21 +75,25 @@ function closeAllModals() {
 }
 
 function setupEventDelegation() {
-  // 1. Envío del formulario de Login
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const email = loginForm.email?.value?.trim() || "admin@elcarmen.com";
-      const name = email.split("@")[0] || "Administrador";
-      const user = { email, name: name.charAt(0).toUpperCase() + name.slice(1), role: "Administrador" };
-      setSession(user);
+      const email = (loginForm.email?.value || "admin@elcarmen.com").trim().toLowerCase();
+      const isEmpleado = email.startsWith("empleado") || email.startsWith("caja") || email.startsWith("bodega");
+      const role = isEmpleado ? ROLES.EMPLEADO : ROLES.ADMIN;
+      const rawName = email.split("@")[0] || "Administrador";
+      const user = {
+        uid: `usr-${rawName}`,
+        email,
+        name: rawName.charAt(0).toUpperCase() + rawName.slice(1),
+        role
+      };
+      setCurrentUser(user);
       await showDashboardView(user, DEFAULT_ROUTE);
     });
   }
 
-  // 2. Delegación global de clics (navegación SPA, modales, logout e impresión)
   document.addEventListener("click", async (e) => {
-    // Botón de imprimir en Reportes
     const printBtn = e.target.closest("#btn-imprimir");
     if (printBtn) {
       e.preventDefault();
@@ -85,7 +101,6 @@ function setupEventDelegation() {
       return;
     }
 
-    // Cerrar modal haciendo clic en el fondo oscuro
     if (e.target.classList.contains("modal-overlay")) {
       e.target.classList.remove("is-open");
       return;
@@ -94,17 +109,15 @@ function setupEventDelegation() {
     const link = e.target.closest("a, button[data-route]");
     if (!link) return;
 
-    // Botón de cerrar sesión (.logout)
     if (link.classList.contains("logout")) {
       e.preventDefault();
-      setSession(null);
+      setCurrentUser(null);
       showLoginView();
       return;
     }
 
     const href = link.getAttribute("href") || "";
 
-    // Apertura de modales (#modal-cierre, #modal-producto, #modal-usuario) sin ensuciar el hash del router
     if (href.startsWith("#modal-")) {
       const modal = document.querySelector(href);
       if (modal) {
@@ -114,21 +127,18 @@ function setupEventDelegation() {
       return;
     }
 
-    // Cierre de modales (href="#" dentro de un modal)
     if (href === "#" && link.closest(".modal-overlay")) {
       e.preventDefault();
       link.closest(".modal-overlay").classList.remove("is-open");
       return;
     }
 
-    // Botón de ingreso en login si fuera un <a>
     if (link.closest("#login-form")) {
       e.preventDefault();
       if (loginForm) loginForm.requestSubmit();
       return;
     }
 
-    // Enlaces a módulos (menú lateral, tarjetas de pilares, botones de acceso rápido)
     const routeKey = link.dataset.route || resolveRouteKey(href);
     if (routeKey) {
       e.preventDefault();
@@ -137,35 +147,35 @@ function setupEventDelegation() {
     }
   });
 
-  // Cerrar modales con tecla Escape
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeAllModals();
   });
 
-  // Botón Atrás / Adelante del navegador
   window.addEventListener("popstate", (e) => {
     const routeKey = e.state?.route || getRouteFromLocation();
     if (routeKey) navigateTo(routeKey, { updateHistory: false });
   });
 }
 
-// Inicialización al cargar el DOM
 function initApp() {
+  ensureSeedData();
   setupEventDelegation();
 
-  // Si estamos en index.html (contiene #login-view y #dashboard-view)
   if (loginView && dashboardView) {
-    const session = getSession();
     const hasRouteHash = window.location.hash.startsWith("#/");
-    if (session || hasRouteHash) {
-      showDashboardView(session || { name: "Administrador", role: "Administrador" }, getRouteFromLocation());
+    if (hasActiveSession() || hasRouteHash) {
+      const user = getCurrentUser();
+      setCurrentUser(user);
+      showDashboardView(user, getRouteFromLocation());
     } else {
       showLoginView();
     }
     return;
   }
 
-  // Si se abrió directamente html/<modulo>.html, activar navegación SPA sobre ese contenedor
+  // Si se abre directamente un archivo html/<modulo>.html
+  const user = getCurrentUser();
+  setCurrentUser(user);
   navigateTo(getRouteFromLocation(), { replace: true, updateHistory: false });
 }
 

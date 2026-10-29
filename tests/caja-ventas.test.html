@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suite de Pruebas Funcionales — Caja y Ventas | El Carmen</title>
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <style>
+    body { padding: 2rem; max-width: 1080px; margin: 0 auto; }
+    .test-summary { display: flex; gap: 1rem; margin: 1rem 0 1.5rem; flex-wrap: wrap; }
+    .test-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .65rem 1rem; border-bottom: 1px solid var(--border); font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem">
+    <div>
+      <h1>Pruebas Funcionales — Módulo Caja y Ventas</h1>
+      <p class="text-muted" style="margin:0">Verificación automatizada de los 25 escenarios obligatorios (Sección 18)</p>
+    </div>
+    <button type="button" class="btn btn-primary" id="btn-run-tests">Ejecutar las 25 pruebas</button>
+  </header>
+
+  <div class="test-summary" id="test-summary"></div>
+
+  <section class="card">
+    <div class="card-header">
+      <h3>Resultados por escenario</h3>
+      <span class="badge" id="test-status-badge">Ejecutando...</span>
+    </div>
+    <div id="test-results"></div>
+  </section>
+
+  <script type="module" src="./caja-ventas.test.js"></script>
+</body>
+</html>

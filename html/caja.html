@@ -66,42 +66,77 @@
       <!-- VISTA: Caja y Ventas (se inyecta en #app-root) -->
       <div class="view" data-view="caja">
 
-        <!-- Estado de la caja -->
-        <section class="card cash-status">
-          <span class="badge badge-success">Caja abierta</span>
-          <div class="grow meta">
-            <span>Abierta por: <b>Administrador</b></span>
-            <span>Monto inicial: <b class="num">$ 200.000</b></span>
-            <span>Ventas del turno: <b>12</b></span>
+        <!-- Notificación operativa de Caja y Ventas -->
+        <div id="pos-feedback" class="alert hidden" role="status" aria-live="polite" style="margin-bottom:1rem"></div>
+
+        <!-- Estado de la caja (Abierta / Cerrada) -->
+        <section class="card cash-status" id="cash-status-bar">
+          <span class="badge badge-success" id="caja-badge-estado">Caja abierta</span>
+          <div class="grow meta" id="caja-meta-info">
+            <span>Abierta por: <b id="caja-abierta-por">Administrador</b></span>
+            <span>Monto inicial: <b class="num" id="caja-monto-inicial">$ 200.000</b></span>
+            <span>Ventas del turno: <b id="caja-ventas-turno">0</b></span>
+            <span>Efectivo esperado: <b class="num" id="caja-efectivo-esperado">$ 200.000</b></span>
           </div>
-          <a class="btn btn-outline" href="#modal-cierre">Cerrar caja</a>
+          <div class="page-actions" id="caja-status-actions">
+            <a class="btn btn-outline" href="#modal-mov-caja" id="btn-abrir-mov-caja">Movimiento efectivo</a>
+            <a class="btn btn-outline" href="#modal-cierre" id="btn-abrir-cierre">Cerrar caja</a>
+          </div>
         </section>
 
-        <div class="pos">
+        <!-- Panel de Apertura de Caja (se muestra cuando NO hay una caja abierta) -->
+        <section class="card hidden" id="panel-apertura-caja" style="margin-bottom:1.25rem; border-left:4px solid var(--navy-800)">
+          <div class="card-header">
+            <h3>Apertura de caja — Iniciar turno</h3>
+            <span class="badge badge-warning">Caja cerrada</span>
+          </div>
+          <form class="card-body" id="form-apertura-caja">
+            <p class="text-muted" style="margin-top:0">
+              Debes abrir una caja antes de registrar ventas. El monto inicial corresponde a la base de efectivo físico y no se contabiliza como ingreso por ventas.
+            </p>
+            <div class="form-grid">
+              <div class="field">
+                <label class="label" for="apertura-usuario">Usuario responsable</label>
+                <input class="input" id="apertura-usuario" type="text" readonly value="Administrador">
+              </div>
+              <div class="field">
+                <label class="label" for="apertura-fecha">Fecha y hora de apertura</label>
+                <input class="input" id="apertura-fecha" type="text" readonly>
+              </div>
+              <div class="field">
+                <label class="label" for="apertura-monto">Monto inicial de efectivo (COP)</label>
+                <input class="input num" id="apertura-monto" name="montoInicial" type="number" min="0" step="1" placeholder="Ej: 200000" required>
+              </div>
+              <div class="field">
+                <label class="label" for="apertura-obs">Observaciones (opcional)</label>
+                <input class="input" id="apertura-obs" name="observaciones" type="text" placeholder="Ej: Base en billetes sencillos">
+              </div>
+            </div>
+            <p id="apertura-error" class="error-text hidden" style="margin:.75rem 0 0"></p>
+            <div style="margin-top:1rem">
+              <button type="submit" class="btn btn-primary" id="btn-confirmar-apertura">Abrir caja e iniciar punto de venta</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Punto de Venta: 2 columnas (Catálogo interactivo + Carrito de venta actual) -->
+        <div class="pos" id="pos-workspace">
           <!-- Columna 1: catálogo interactivo -->
           <section aria-label="Catálogo de productos">
             <div class="toolbar">
-              <input class="input" type="search" id="buscar-producto" placeholder="Buscar producto por nombre o código">
+              <input class="input" type="search" id="buscar-producto" placeholder="Buscar producto por nombre o código (ej. VT-006, espejo, bisagra)">
+              <button type="button" class="btn btn-outline" id="btn-medida-vidrio" title="Calcular corte de vidrio o espejo por ancho y alto">Corte a medida (m²)</button>
             </div>
-            <div class="chips">
-              <button type="button" class="chip active">Todos</button>
-              <button type="button" class="chip">Vidrios</button>
-              <button type="button" class="chip">Perfiles</button>
-              <button type="button" class="chip">Accesorios</button>
-              <button type="button" class="chip">Insumos</button>
+            <div class="chips" id="pos-categorias" role="tablist" aria-label="Categorías de productos">
+              <button type="button" class="chip active" data-categoria="Todos">Todos</button>
+              <button type="button" class="chip" data-categoria="Vidrios">Vidrios</button>
+              <button type="button" class="chip" data-categoria="Perfiles">Perfiles</button>
+              <button type="button" class="chip" data-categoria="Accesorios">Accesorios</button>
+              <button type="button" class="chip" data-categoria="Insumos">Insumos</button>
             </div>
 
-            <!-- Cuadrícula de productos: JavaScript generará estas tarjetas desde Firestore -->
-            <div class="product-grid" id="product-grid">
-              <button type="button" class="product-card"><div class="product-thumb">VT</div><span class="product-name">Vidrio templado 6 mm</span><span class="product-meta">Stock: 24 m²</span><span class="product-price num">$ 85.000</span></button>
-              <button type="button" class="product-card"><div class="product-thumb">VL</div><span class="product-name">Vidrio laminado 8 mm</span><span class="product-meta">Stock: 12 m²</span><span class="product-price num">$ 120.000</span></button>
-              <button type="button" class="product-card"><div class="product-thumb">ES</div><span class="product-name">Espejo 4 mm</span><span class="product-meta">Stock: 18 m²</span><span class="product-price num">$ 65.000</span></button>
-              <button type="button" class="product-card"><div class="product-thumb">PA</div><span class="product-name">Perfil aluminio 1&quot;</span><span class="product-meta">Stock: 60 u</span><span class="product-price num">$ 28.500</span></button>
-              <button type="button" class="product-card"><div class="product-thumb">RC</div><span class="product-name">Riel corredizo 3 m</span><span class="product-meta">Stock: 35 u</span><span class="product-price num">$ 42.000</span></button>
-              <button type="button" class="product-card"><div class="product-thumb">BH</div><span class="product-name">Bisagra hidráulica</span><span class="product-meta">Stock: 40 u</span><span class="product-price num">$ 18.000</span></button>
-              <button type="button" class="product-card"><div class="product-thumb">CV</div><span class="product-name">Cerradura para vidrio</span><span class="product-meta">Stock: 3 u</span><span class="product-price num">$ 54.000</span></button>
-              <button type="button" class="product-card" disabled><div class="product-thumb">SI</div><span class="product-name">Silicona estructural</span><span class="product-meta">Agotado</span><span class="product-price num">$ 16.500</span></button>
-            </div>
+            <!-- Cuadrícula de productos obtenida en tiempo real desde el módulo de Inventario -->
+            <div class="product-grid" id="product-grid"></div>
           </section>
 
           <!-- Columna 2: carrito de compra (Punto de Venta) -->
@@ -111,84 +146,333 @@
               <button type="button" class="btn btn-outline" id="btn-vaciar">Vaciar</button>
             </div>
 
-            <!-- JavaScript inyectará aquí un <li> por producto seleccionado -->
-            <ul class="cart-list" id="cart-items">
-              <li class="cart-item">
-                <span class="name">Vidrio templado 6 mm<br><span class="unit num">$ 85.000 c/u</span></span>
-                <span class="sub num">$ 170.000</span>
-                <span class="qty"><button type="button" aria-label="Quitar uno">−</button><span>2</span><button type="button" aria-label="Agregar uno">+</button></span>
-                <span></span>
-              </li>
-              <li class="cart-item">
-                <span class="name">Bisagra hidráulica<br><span class="unit num">$ 18.000 c/u</span></span>
-                <span class="sub num">$ 36.000</span>
-                <span class="qty"><button type="button" aria-label="Quitar uno">−</button><span>2</span><button type="button" aria-label="Agregar uno">+</button></span>
-                <span></span>
-              </li>
-            </ul>
-            <!-- Se muestra (quitando .hidden) cuando el carrito está vacío -->
-            <p class="cart-empty hidden" id="cart-empty">El carrito está vacío. Selecciona productos del catálogo.</p>
+            <!-- Selección de cliente y referencia de pedido/cotización -->
+            <div style="padding:.85rem 1.25rem; border-bottom:1px solid var(--border); background:var(--navy-50)">
+              <div class="field" style="margin-bottom:.5rem">
+                <div style="display:flex; justify-content:space-between; align-items:center">
+                  <label class="label" for="pos-cliente">Cliente</label>
+                  <a href="#modal-cliente-pos" style="font-size:.78rem; font-weight:600">+ Nuevo cliente</a>
+                </div>
+                <select class="select" id="pos-cliente"></select>
+              </div>
+              <div class="field">
+                <input class="input" id="pos-orden-ref" type="text" placeholder="Ref. pedido / cotización / instalación (opcional)" style="padding:.4rem .65rem; font-size:.82rem">
+              </div>
+            </div>
+
+            <!-- Líneas de productos de la venta actual -->
+            <ul class="cart-list" id="cart-items"></ul>
+            <p class="cart-empty" id="cart-empty">El carrito está vacío. Selecciona productos del catálogo.</p>
 
             <div class="cart-footer">
-              <div class="summary">
-                <div class="summary-row"><span>Subtotal</span><span class="num" id="cart-subtotal">$ 206.000</span></div>
-                <div class="summary-row total"><span>Total</span><span class="num" id="cart-total">$ 206.000</span></div>
-              </div>
-              <div class="form-grid cart-pay-grid">
+              <!-- Descuento autorizado (opcional) -->
+              <div class="form-grid cart-pay-grid" style="margin-bottom:.65rem">
+                <div class="field">
+                  <label class="label" for="cart-descuento-input">Descuento (COP)</label>
+                  <input class="input num" id="cart-descuento-input" type="number" min="0" step="1" value="0">
+                </div>
                 <div class="field">
                   <label class="label" for="metodo-pago">Método de pago</label>
                   <select class="select" id="metodo-pago">
-                    <option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option>
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Transferencia">Transferencia</option>
+                    <option value="Tarjeta débito">Tarjeta débito</option>
+                    <option value="Tarjeta crédito">Tarjeta crédito</option>
+                    <option value="Mixto">Pago dividido (Mixto)</option>
                   </select>
                 </div>
-                <div class="field">
-                  <label class="label" for="recibido">Valor recibido</label>
-                  <input class="input" id="recibido" type="number" min="0" placeholder="0">
+              </div>
+
+              <!-- Campo para pago en Efectivo -->
+              <div id="box-pago-efectivo" class="field" style="margin-bottom:.75rem">
+                <label class="label" for="recibido">Valor recibido en efectivo (COP)</label>
+                <input class="input num" id="recibido" type="number" min="0" step="1" placeholder="0">
+              </div>
+
+              <!-- Campo para pagos electrónicos (Transferencia / Tarjetas) -->
+              <div id="box-pago-electronico" class="field hidden" style="margin-bottom:.75rem">
+                <label class="label" for="referencia-pago">Referencia / comprobante de transacción</label>
+                <input class="input" id="referencia-pago" type="text" placeholder="Ej: Nequi #84920 o voucher datáfono">
+              </div>
+
+              <!-- Campos para pago dividido (Mixto) -->
+              <div id="box-pago-mixto" class="hidden" style="margin-bottom:.75rem; padding:.65rem; background:var(--white); border:1px solid var(--border); border-radius:var(--radius-sm)">
+                <div class="form-grid cart-pay-grid" style="margin-bottom:.5rem">
+                  <div class="field">
+                    <label class="label" for="mixto-efectivo">Efectivo (COP)</label>
+                    <input class="input num" id="mixto-efectivo" type="number" min="0" step="1" value="0">
+                  </div>
+                  <div class="field">
+                    <label class="label" for="mixto-otro-metodo">2° Método</label>
+                    <select class="select" id="mixto-otro-metodo">
+                      <option value="Transferencia">Transferencia</option>
+                      <option value="Tarjeta débito">Tarjeta débito</option>
+                      <option value="Tarjeta crédito">Tarjeta crédito</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-grid cart-pay-grid" style="margin-bottom:0">
+                  <div class="field">
+                    <label class="label" for="mixto-otro-importe">Importe 2° método</label>
+                    <input class="input num" id="mixto-otro-importe" type="number" min="0" step="1" value="0">
+                  </div>
+                  <div class="field">
+                    <label class="label" for="mixto-referencia">Referencia</label>
+                    <input class="input" id="mixto-referencia" type="text" placeholder="Ref. transacción">
+                  </div>
                 </div>
               </div>
-              <div class="summary"><div class="summary-row"><span>Cambio</span><b class="num" id="cart-cambio">$ 0</b></div></div>
-              <!-- Con el carrito vacío JavaScript añade el atributo disabled -->
-              <button type="button" class="btn btn-primary btn-block" id="btn-cobrar">Cobrar venta</button>
-              <button type="button" class="btn btn-primary btn-block" style="margin-top:.6rem" disabled>Cobrar venta (estado deshabilitado)</button>
+
+              <div class="summary">
+                <div class="summary-row"><span>Subtotal</span><span class="num" id="cart-subtotal">$ 0</span></div>
+                <div class="summary-row hidden" id="row-descuento"><span>Descuento</span><span class="num text-expense" id="cart-descuento">− $ 0</span></div>
+                <div class="summary-row total"><span>Total a pagar</span><span class="num" id="cart-total">$ 0</span></div>
+                <div class="summary-row" id="row-cambio">
+                  <span id="label-cambio-faltante">Cambio</span>
+                  <b class="num" id="cart-cambio">$ 0</b>
+                </div>
+              </div>
+
+              <p id="cart-error" class="error-text hidden" style="margin:0 0 .6rem"></p>
+              <button type="button" class="btn btn-primary btn-block" id="btn-cobrar" disabled>Cobrar venta</button>
             </div>
           </aside>
         </div>
 
-        <!-- Modal oculto: cierre de caja (se abre con #modal-cierre o añadiendo .is-open) -->
+        <!-- Historial y consulta de ventas realizadas (Sección 13) -->
+        <section class="card" style="margin-top:1.5rem" aria-labelledby="titulo-historial-ventas">
+          <div class="card-header">
+            <h3 id="titulo-historial-ventas">Historial y consulta de ventas</h3>
+            <span class="badge" id="historial-ventas-count">0 ventas</span>
+          </div>
+          <div class="card-body">
+            <div class="toolbar" style="margin-bottom:1rem">
+              <input class="input" type="search" id="hist-buscar" placeholder="Buscar por N° venta (V-0001), cliente o vendedor">
+              <input class="input" type="date" id="hist-desde" title="Desde fecha" style="max-width:165px">
+              <input class="input" type="date" id="hist-hasta" title="Hasta fecha" style="max-width:165px">
+              <select class="select" id="hist-metodo" style="max-width:185px">
+                <option value="Todos">Todos los métodos</option>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Tarjeta débito">Tarjeta débito</option>
+                <option value="Tarjeta crédito">Tarjeta crédito</option>
+              </select>
+              <select class="select" id="hist-estado" style="max-width:165px">
+                <option value="Todos">Todos los estados</option>
+                <option value="Completada">Completada</option>
+                <option value="Anulada">Anulada</option>
+              </select>
+            </div>
+
+            <div class="table-wrap">
+              <table class="table" id="tabla-historial-ventas">
+                <thead>
+                  <tr>
+                    <th>N° Venta</th>
+                    <th>Fecha y hora</th>
+                    <th>Cliente</th>
+                    <th>Vendedor</th>
+                    <th>Método de pago</th>
+                    <th class="num">Total</th>
+                    <th>Estado</th>
+                    <th class="text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-historial-ventas"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Modal 1: Cierre de caja con arqueo detallado (Sección 12) -->
         <div class="modal-overlay" id="modal-cierre" role="dialog" aria-modal="true" aria-labelledby="titulo-cierre">
           <div class="modal">
-            <div class="modal-header"><h3 id="titulo-cierre">Cierre de caja</h3><a class="modal-close" href="#" aria-label="Cerrar">×</a></div>
+            <div class="modal-header"><h3 id="titulo-cierre">Arqueo y cierre de caja</h3><a class="modal-close" href="#" aria-label="Cerrar">×</a></div>
             <form id="form-cierre">
               <div class="modal-body">
-                <div class="summary">
-                  <div class="summary-row"><span>Monto inicial</span><span class="num">$ 200.000</span></div>
-                  <div class="summary-row"><span>Ventas en efectivo</span><span class="num">$ 640.000</span></div>
-                  <div class="summary-row"><span>Ventas por transferencia</span><span class="num">$ 310.000</span></div>
-                  <div class="summary-row"><span>Ventas con tarjeta</span><span class="num">$ 150.000</span></div>
-                  <div class="summary-row total"><span>Efectivo esperado</span><span class="num">$ 840.000</span></div>
+                <div class="summary" id="cierre-resumen-box">
+                  <div class="summary-row"><span>Responsable apertura</span><b id="cierre-responsable">Administrador</b></div>
+                  <div class="summary-row"><span>Fecha y hora apertura</span><span id="cierre-fecha-apertura">—</span></div>
+                  <div class="summary-row"><span>Ventas activas / anuladas</span><span id="cierre-cant-ventas">0 / 0</span></div>
+                  <div class="summary-row"><span>Total vendido en el turno</span><b class="num" id="cierre-total-vendido">$ 0</b></div>
+                  <hr style="border:0; border-top:1px solid var(--border); margin:.35rem 0">
+                  <div class="summary-row"><span>Monto inicial (base efectivo)</span><span class="num" id="cierre-base">$ 0</span></div>
+                  <div class="summary-row"><span>+ Ventas en efectivo</span><span class="num" id="cierre-efectivo-ventas">$ 0</span></div>
+                  <div class="summary-row"><span>+ Entradas manuales de efectivo</span><span class="num" id="cierre-entradas-extra">$ 0</span></div>
+                  <div class="summary-row"><span>− Salidas / devoluciones en efectivo</span><span class="num text-expense" id="cierre-salidas-extra">− $ 0</span></div>
+                  <div class="summary-row"><span>Pagos por transferencia (no efectivo)</span><span class="num" id="cierre-transferencia">$ 0</span></div>
+                  <div class="summary-row"><span>Pagos con tarjeta (no efectivo)</span><span class="num" id="cierre-tarjeta">$ 0</span></div>
+                  <div class="summary-row total"><span>Efectivo físico esperado en caja</span><span class="num" id="cierre-esperado">$ 0</span></div>
                 </div>
                 <div class="form-grid">
                   <div class="field">
-                    <label class="label" for="efectivo-contado">Efectivo contado</label>
-                    <input class="input" id="efectivo-contado" type="number" min="0" placeholder="0" required>
+                    <label class="label" for="efectivo-contado">Efectivo contado (COP)</label>
+                    <input class="input num" id="efectivo-contado" type="number" min="0" step="1" placeholder="0" required>
                   </div>
                   <div class="field">
-                    <label class="label">Diferencia</label>
-                    <div class="input num" style="background:var(--navy-50)">$ 0</div>
+                    <label class="label">Diferencia (Contado − Esperado)</label>
+                    <div class="input num" id="cierre-diferencia" style="background:var(--navy-50); font-weight:700">$ 0</div>
                   </div>
                   <div class="field full">
-                    <label class="label" for="obs-cierre">Observaciones</label>
-                    <textarea class="textarea" id="obs-cierre" rows="2" placeholder="Opcional"></textarea>
+                    <label class="label" for="obs-cierre">Observaciones del cierre (obligatoria si hay diferencia)</label>
+                    <textarea class="textarea" id="obs-cierre" rows="2" placeholder="Explique cualquier sobrante o faltante de caja"></textarea>
                   </div>
                 </div>
+                <p id="cierre-error" class="error-text hidden" style="margin:.6rem 0 0"></p>
               </div>
               <div class="modal-footer">
                 <a class="btn btn-outline" href="#">Cancelar</a>
-                <button type="submit" class="btn btn-primary">Confirmar cierre</button>
+                <button type="submit" class="btn btn-primary" id="btn-confirmar-cierre">Confirmar cierre definitivo</button>
               </div>
             </form>
           </div>
         </div>
+
+        <!-- Modal 2: Comprobante de venta e impresión (Sección 10) -->
+        <div class="modal-overlay" id="modal-comprobante" role="dialog" aria-modal="true" aria-labelledby="titulo-comprobante">
+          <div class="modal">
+            <div class="modal-header"><h3 id="titulo-comprobante">Comprobante interno de venta</h3><a class="modal-close" href="#" aria-label="Cerrar">×</a></div>
+            <div class="modal-body" id="comprobante-body"></div>
+            <div class="modal-footer">
+              <a class="btn btn-outline" href="#">Cerrar</a>
+              <button type="button" class="btn btn-primary" id="btn-imprimir-comprobante">Imprimir / Guardar PDF</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal 3: Calculadora de corte de vidrio/espejo por dimensiones en cm (Sección 5) -->
+        <div class="modal-overlay" id="modal-medidas" role="dialog" aria-modal="true" aria-labelledby="titulo-medidas">
+          <div class="modal">
+            <div class="modal-header"><h3 id="titulo-medidas">Agregar vidrio o espejo a medida (m²)</h3><a class="modal-close" href="#" aria-label="Cerrar">×</a></div>
+            <form id="form-medidas">
+              <div class="modal-body form-grid">
+                <div class="field full">
+                  <label class="label" for="med-producto">Producto en m²</label>
+                  <select class="select" id="med-producto" required></select>
+                </div>
+                <div class="field">
+                  <label class="label" for="med-ancho">Ancho (cm)</label>
+                  <input class="input num" id="med-ancho" type="number" min="1" step="0.1" value="100" required>
+                </div>
+                <div class="field">
+                  <label class="label" for="med-alto">Alto (cm)</label>
+                  <input class="input num" id="med-alto" type="number" min="1" step="0.1" value="100" required>
+                </div>
+                <div class="field">
+                  <label class="label" for="med-piezas">Cantidad de piezas</label>
+                  <input class="input num" id="med-piezas" type="number" min="1" step="1" value="1" required>
+                </div>
+                <div class="field">
+                  <label class="label">Área total calculada</label>
+                  <div class="input num" id="med-area-resultado" style="background:var(--navy-50); font-weight:700">1 m²</div>
+                </div>
+                <p id="med-error" class="error-text full hidden" style="margin:0"></p>
+              </div>
+              <div class="modal-footer">
+                <a class="btn btn-outline" href="#">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Agregar al carrito</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Modal 4: Nuevo cliente rápido desde Caja (Sección 7) -->
+        <div class="modal-overlay" id="modal-cliente-pos" role="dialog" aria-modal="true" aria-labelledby="titulo-cliente-pos">
+          <div class="modal">
+            <div class="modal-header"><h3 id="titulo-cliente-pos">Registrar cliente</h3><a class="modal-close" href="#" aria-label="Cerrar">×</a></div>
+            <form id="form-cliente-pos">
+              <div class="modal-body form-grid">
+                <div class="field full">
+                  <label class="label" for="cli-pos-nombre">Nombre completo o razón social</label>
+                  <input class="input" id="cli-pos-nombre" required placeholder="Ej: Aluminios del Valle S.A.S.">
+                </div>
+                <div class="field">
+                  <label class="label" for="cli-pos-doc">C.C. / NIT</label>
+                  <input class="input" id="cli-pos-doc" required placeholder="Ej: 901234567-8">
+                </div>
+                <div class="field">
+                  <label class="label" for="cli-pos-tel">Teléfono (opcional)</label>
+                  <input class="input" id="cli-pos-tel" placeholder="Ej: 3001234567">
+                </div>
+                <p id="cli-pos-error" class="error-text full hidden" style="margin:0"></p>
+              </div>
+              <div class="modal-footer">
+                <a class="btn btn-outline" href="#">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Guardar y seleccionar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Modal 5: Entrada / Salida manual de efectivo en caja -->
+        <div class="modal-overlay" id="modal-mov-caja" role="dialog" aria-modal="true" aria-labelledby="titulo-mov-caja">
+          <div class="modal">
+            <div class="modal-header"><h3 id="titulo-mov-caja">Movimiento de efectivo en caja</h3><a class="modal-close" href="#" aria-label="Cerrar">×</a></div>
+            <form id="form-mov-caja">
+              <div class="modal-body form-grid">
+                <div class="field">
+                  <label class="label" for="mov-caja-tipo">Tipo</label>
+                  <select class="select" id="mov-caja-tipo">
+                    <option value="Entrada">Entrada de efectivo</option>
+                    <option value="Salida">Salida de efectivo</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="label" for="mov-caja-monto">Monto (COP)</label>
+                  <input class="input num" id="mov-caja-monto" type="number" min="1" step="1" required placeholder="0">
+                </div>
+                <div class="field full">
+                  <label class="label" for="mov-caja-concepto">Concepto / justificación</label>
+                  <input class="input" id="mov-caja-concepto" required placeholder="Ej: Sencillo para cambio / Pago transporte urgente">
+                </div>
+                <p id="mov-caja-error" class="error-text full hidden" style="margin:0"></p>
+              </div>
+              <div class="modal-footer">
+                <a class="btn btn-outline" href="#">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Registrar en caja</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Modal 6: Anulación o Devolución autorizada de una venta (Sección 11) -->
+        <div class="modal-overlay" id="modal-anular-venta" role="dialog" aria-modal="true" aria-labelledby="titulo-anular-venta">
+          <div class="modal">
+            <div class="modal-header"><h3 id="titulo-anular-venta">Anular / Devolver venta</h3><a class="modal-close" href="#" aria-label="Cerrar">×</a></div>
+            <form id="form-anular-venta">
+              <div class="modal-body">
+                <input type="hidden" id="anular-venta-id">
+                <p style="margin-top:0">Venta seleccionada: <b id="anular-venta-resumen">—</b></p>
+                <div class="form-grid">
+                  <div class="field">
+                    <label class="label" for="anular-tipo-operacion">Operación</label>
+                    <select class="select" id="anular-tipo-operacion">
+                      <option value="Anular">Anulación total de la venta</option>
+                      <option value="Devolver">Devolución de productos</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="anular-reintegrar">Tratamiento de inventario</label>
+                    <select class="select" id="anular-reintegrar">
+                      <option value="si">Reintegrar existencias al inventario</option>
+                      <option value="no">No reintegrar (vidrio cortado a medida / dañado)</option>
+                    </select>
+                  </div>
+                  <div class="field full">
+                    <label class="label" for="anular-motivo">Motivo obligatorio (para auditoría)</label>
+                    <textarea class="textarea" id="anular-motivo" rows="2" required placeholder="Explique la razón de la anulación o devolución"></textarea>
+                  </div>
+                </div>
+                <p id="anular-error" class="error-text hidden" style="margin:.6rem 0 0"></p>
+              </div>
+              <div class="modal-footer">
+                <a class="btn btn-outline" href="#">Cancelar</a>
+                <button type="submit" class="btn btn-danger">Confirmar ajuste autorizado</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
       </div>
     </main>
 
