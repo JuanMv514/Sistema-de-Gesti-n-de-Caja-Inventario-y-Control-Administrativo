@@ -29,6 +29,11 @@ import {
 import {
   registrarMovimientoContable,
   calcularResumenContable,
+  filtrarMovimientosContables,
+  generarInformeFinancieroContable,
+  registrarTrasladoInterno,
+  revertirMovimientoContable,
+  exportarContabilidadCSV,
   TIPOS_CONTABLE
 } from "../js/services/contabilidad-service.js";
 import {
@@ -804,10 +809,245 @@ export async function runAll25Tests() {
     assert(getCollection(COLLECTIONS.VENTAS).length === 0, "Ventas debe estar vacío");
     const repVacio = generarReportesConsolidados({});
     assert(repVacio.kpis.totalVentasPeriodo === 0 && repVacio.kpis.valorBodegaVenta === 0, "Los KPIs sin datos deben ser $ 0");
+    const resContVacio = calcularResumenContable();
+    assert(resContVacio.tieneDatosBancarios === false, "Sin movimientos bancarios debe indicar que no hay datos bancarios registrados");
 
-    // Restaurar datos de prueba y caja abierta para inspección interactiva
+    // Restaurar datos de prueba y caja abierta para las pruebas de Contabilidad Básica
     resetDatabaseForTests();
     await abrirCaja({ montoInicial: 200000, observaciones: "Turno activo" }, adminUser);
+  });
+
+  // 40. Contabilidad Básica (Pruebas 1, 2, 3, 4 y 5 — Sección 15): Ingresos y gastos en efectivo/bancos y rechazo de valores <= 0
+  await step(40, "Contabilidad: Registrar ingresos y gastos en efectivo y transferencia e impedir valores cero o negativos", async () => {
+    const ingEfectivo = await registrarMovimientoContable(
+      {
+        tipo: TIPOS_CONTABLE.INGRESO,
+        categoria: "Abonos de instalaciones",
+        concepto: "Instalación división de baño cliente Pérez",
+        monto: 120000,
+        metodoPago: "Efectivo",
+        afectaCajaFisica: true,
+        fechaEfectiva: "2026-10-29"
+      },
+      adminUser
+    );
+    assert(ingEfectivo.monto === 120000 && ingEfectivo.afectaCajaFisica === true, "Ingreso en efectivo debe afectar caja física");
+
+    const ingBanco = await registrarMovimientoContable(
+      {
+        tipo: TIPOS_CONTABLE.INGRESO,
+        categoria: "Otros ingresos",
+        concepto: "Venta de retal de aluminio por transferencia",
+        monto: 60000,
+        metodoPago: "Transferencia",
+        referencia: "BANCOL-551",
+        fechaEfectiva: "2026-10-29"
+      },
+      adminUser
+    );
+    assert(ingBanco.afectaCajaFisica === false, "Ingreso por transferencia no debe afectar la caja física");
+
+    const gastoEfectivo = await registrarMovimientoContable(
+      {
+        tipo: TIPOS_CONTABLE.GASTO,
+        categoria: "Transporte",
+        concepto: "Acarreo urbano de perfiles",
+        monto: 25000,
+        metodoPago: "Efectivo",
+        afectaCajaFisica: true,
+        fechaEfectiva: "2026-10-29"
+      },
+      adminUser
+    );
+    assert(gastoEfectivo.afectaCajaFisica === true, "Gasto en efectivo debe afectar caja física cuando se indica");
+
+    const gastoBanco = await registrarMovimientoContable(
+      {
+        tipo: TIPOS_CONTABLE.GASTO,
+        categoria: "Arriendo",
+        concepto: "Pago arriendo local comercial",
+        monto: 50000,
+        metodoPago: "Transferencia",
+        referencia: "ARR-10",
+        afectaCajaFisica: true, // aunque se envíe true, al ser Transferencia debe forzarse a false
+        fechaEfectiva: "2026-10-29"
+      },
+      adminUser
+    );
+    assert(gastoBanco.afectaCajaFisica === false, "Un gasto pagado desde banco nunca debe descontar del efectivo físico de la caja");
+
+    await assertThrows(
+      () =>
+        registrarMovimientoContable(
+          { tipo: TIPOS_CONTABLE.INGRESO, categoria: "Otros ingresos", concepto: "Monto inválido", monto: 0 },
+          adminUser
+        ),
+      "mayor que cero"
+    );
+    await assertThrows(
+      () =>
+        registrarMovimientoContable(
+          { tipo: TIPOS_CONTABLE.GASTO, categoria: "Otros gastos", concepto: "Monto negativo", monto: -15000 },
+          adminUser
+        ),
+      "mayor que cero"
+    );
+  });
+
+  // 41. Contabilidad Básica (Pruebas 6, 7 y 8 — Sección 15): Consulta por fechas y filtros por categoría y método de pago
+  await step(41, "Contabilidad: Consultar movimientos por fecha y filtrar por categoría y método de pago", async () => {
+    const porFecha = filtrarMovimientosContables({ fechaDesde: "2026-10-29", fechaHasta: "2026-10-29" });
+    assert(porFecha.length === 4, `Se esperaban 4 movimientos en 2026-10-29, se obtuvieron ${porFecha.length}`);
+
+    const porCategoria = filtrarMovimientosContables({ categoria: "Arriendo" });
+    assert(porCategoria.length === 1 && porCategoria[0].monto === 50000, "Filtro por categoría Arriendo debe retornar 1 registro de $ 50.000");
+
+    const porMetodo = filtrarMovimientosContables({ metodoPago: "Transferencia" });
+    assert(porMetodo.length === 2, "Filtro por método Transferencia debe retornar los 2 movimientos bancarios");
+  });
+
+  // 42. Contabilidad Básica (Pruebas 9, 10, 12 y 13 — Sección 15): Resultado del período, separación de caja física vs bancos y traslados internos
+  await step(42, "Contabilidad: Calcular resultado del período, separar efectivo vs bancos y registrar traslados internos", async () => {
+    const resAntes = calcularResumenContable();
+    // Ingresos: 120.000 + 60.000 = 180.000 | Gastos: 25.000 + 50.000 = 75.000 | Resultado: 105.000
+    assert(resAntes.ingresos === 180000, `Ingresos esperados 180000, obtenidos ${resAntes.ingresos}`);
+    assert(resAntes.gastos === 75000, `Gastos esperados 75000, obtenidos ${resAntes.gastos}`);
+    assert(resAntes.resultadoPeriodo === 105000, `Resultado esperado 105000, obtenido ${resAntes.resultadoPeriodo}`);
+    assert(resAntes.saldoBancos === 10000, `Saldo en bancos esperado 10000 (60k - 50k), obtenido ${resAntes.saldoBancos}`);
+
+    // Arqueo de caja física: Base 200.000 + Ingreso efectivo 120.000 - Gasto efectivo 25.000 = 295.000
+    // (La transferencia de 60.000 y el arriendo por banco de 50.000 NO alteran la caja física)
+    const arqueo = calcularArqueoCaja(obtenerCajaAbierta());
+    assert(arqueo.efectivoEsperado === 295000, `Efectivo físico esperado 295000, obtenido ${arqueo.efectivoEsperado}`);
+
+    // Registrar traslado interno (consignación de $ 45.000 de Caja física a Cuenta bancaria)
+    await registrarTrasladoInterno(
+      {
+        cuentaOrigen: "Caja física",
+        cuentaDestino: "Cuenta bancaria",
+        monto: 45000,
+        concepto: "Consignación efectivo en cuenta empresarial",
+        referencia: "CONS-01"
+      },
+      adminUser
+    );
+    const resDespues = calcularResumenContable();
+    const arqueoDespues = calcularArqueoCaja(obtenerCajaAbierta());
+    assert(resDespues.ingresos === 180000 && resDespues.gastos === 75000, "Un traslado interno no debe contarse como ingreso ni como gasto");
+    assert(resDespues.resultadoPeriodo === 105000, "Un traslado interno no debe alterar el resultado del período");
+    assert(resDespues.saldoBancos === 55000, "El saldo en bancos debe subir de $ 10.000 a $ 55.000 tras la consignación");
+    assert(arqueoDespues.efectivoEsperado === 250000, "El efectivo físico en caja debe bajar de $ 295.000 a $ 250.000 tras consignar");
+  });
+
+  // 43. Contabilidad Básica (Pruebas 11 y 15 — Sección 15): Integración con ventas, anticipos de clientes sin doble conteo e impedimento de duplicados
+  await step(43, "Contabilidad: Integrar anticipos con pedidos, completar venta sin duplicar ingresos y bloquear registros duplicados", async () => {
+    // 1. Registrar un anticipo de $ 80.000 para un pedido de $ 170.000 (PED-500)
+    const anticipo = await registrarMovimientoContable(
+      {
+        tipo: TIPOS_CONTABLE.INGRESO,
+        categoria: "Anticipos de clientes",
+        concepto: "Anticipo 50% espejo biselado pedido PED-500",
+        monto: 80000,
+        metodoPago: "Transferencia",
+        clienteRelacionado: "Constructora del Norte",
+        pedidoRelacionado: "PED-500",
+        totalPedido: 170000,
+        referencia: "ANT-500"
+      },
+      adminUser
+    );
+    assert(anticipo.saldoPendientePedido === 90000, "El saldo pendiente del pedido debe quedar en $ 90.000");
+
+    // Impedir duplicar el mismo movimiento contable
+    await assertThrows(
+      () =>
+        registrarMovimientoContable(
+          {
+            tipo: TIPOS_CONTABLE.INGRESO,
+            categoria: "Anticipos de clientes",
+            concepto: "Anticipo 50% espejo biselado pedido PED-500",
+            monto: 80000,
+            referencia: "ANT-500"
+          },
+          adminUser
+        ),
+      "duplicado"
+    );
+
+    const ingresosAntesVenta = calcularResumenContable().ingresos; // 180.000 + 80.000 = 260.000
+
+    // 2. Completar la venta del pedido PED-500 por $ 170.000 (2 m² de vidrio templado a $ 85.000)
+    // El cliente solo paga el saldo restante ($ 90.000) en efectivo porque ya abonó $ 80.000 de anticipo
+    const ventaPedido = await registrarVenta(
+      {
+        cajaId: obtenerCajaAbierta().id,
+        ordenReferencia: "PED-500",
+        cliente: "Constructora del Norte",
+        items: [{ productoId: "prod-vt006", cantidad: 2 }], // Total $ 170.000
+        pagos: [{ metodo: "Efectivo", importe: 90000 }]
+      },
+      adminUser
+    );
+    assert(ventaPedido.total === 170000 && ventaPedido.anticipoAplicado === 80000, "La venta debe reconocer el anticipo previo de $ 80.000");
+
+    const ingresosDespuesVenta = calcularResumenContable().ingresos;
+    assert(
+      ingresosDespuesVenta === ingresosAntesVenta + 90000,
+      `No debe contarse dos veces el anticipo: ingresos debían subir solo en $ 90.000 (total ${ingresosAntesVenta + 90000}, obtenido ${ingresosDespuesVenta})`
+    );
+
+    // 3. Impedir registrar manualmente en Contabilidad una venta que ya fue registrada automáticamente desde Caja y Ventas
+    await assertThrows(
+      () =>
+        registrarMovimientoContable(
+          {
+            tipo: TIPOS_CONTABLE.INGRESO,
+            categoria: "Ventas de mostrador",
+            concepto: "Intento de duplicar venta de caja manualmente",
+            monto: 90000,
+            referencia: ventaPedido.numero
+          },
+          adminUser
+        ),
+      "automáticamente desde caja y ventas"
+    );
+  });
+
+  // 44. Contabilidad Básica (Pruebas 14, 16, 17 y 18 — Sección 15): Permisos de reversión, trazabilidad sin borrado, persistencia e informes
+  await step(44, "Contabilidad: Validar permisos, revertir movimiento con motivo conservando historial y generar informes", async () => {
+    const movs = getCollection(COLLECTIONS.MOV_CONTABLES);
+    const movGasto = movs.find((m) => m.categoria === "Transporte" && !m.anulado);
+    assert(Boolean(movGasto), "Debe existir el gasto de transporte activo");
+
+    // Empleado sin permiso contabilidad.revertir no puede revertir movimientos
+    await assertThrows(
+      () => revertirMovimientoContable({ movimientoId: movGasto.id, motivo: "Intento no autorizado" }, empleadoUser),
+      "permisos"
+    );
+
+    // Administrador sin motivo debe ser rechazado
+    await assertThrows(
+      () => revertirMovimientoContable({ movimientoId: movGasto.id, motivo: "abc" }, adminUser),
+      "motivo"
+    );
+
+    // Reversión autorizada con motivo válido
+    const totalRegistrosAntes = getCollection(COLLECTIONS.MOV_CONTABLES).length;
+    const revertido = await revertirMovimientoContable(
+      { movimientoId: movGasto.id, motivo: "Valor registrado en recibo equivocado" },
+      adminUser
+    );
+    const totalRegistrosDespues = getCollection(COLLECTIONS.MOV_CONTABLES).length;
+    assert(revertido.estado === "Revertido" && revertido.anulado === true, "El movimiento debe quedar con estado Revertido");
+    assert(totalRegistrosDespues === totalRegistrosAntes, "No se debe eliminar físicamente el registro histórico");
+
+    // Informes financieros y exportación CSV
+    const informe = generarInformeFinancieroContable({ periodo: "todo" });
+    assert(informe.ingresosPorCategoria.length >= 3, "El informe debe desglosar ingresos por categoría");
+    assert(informe.gastosPorCategoria.length >= 1, "El informe debe desglosar gastos vigentes por categoría");
+    assert(informe.porMetodoPago.length === 4, "El informe debe desglosar los 4 métodos de pago");
+    const csvCont = exportarContabilidadCSV({ periodo: "todo" });
+    assert(csvCont.includes("Constructora del Norte") && csvCont.includes("Revertido"), "El CSV contable debe exportar el historial completo");
   });
 
   return results.sort((a, b) => a.num - b.num);
