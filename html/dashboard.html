@@ -38,7 +38,7 @@
       </ul>
     </nav>
     <div class="sidebar-footer">
-      <div class="avatar">AD</div>
+      <div class="avatar" id="user-avatar">AD</div>
       <div class="user-meta"><strong id="user-name">Administrador</strong><span id="user-role">Rol: Administrador</span></div>
       <a class="logout" href="../index.html" title="Cerrar sesión" aria-label="Cerrar sesión">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
@@ -59,18 +59,19 @@
         <h1>Dashboard</h1>
         <p>Estado en tiempo real de Caja y Ventas, Inventario y Contabilidad</p>
       </div>
+      <span class="badge badge-warning" id="firebase-status-badge" title="Estado de conexión con Firebase Firestore" style="font-size:.74rem">Modo local · Firebase pendiente</span>
       <span class="topbar-date">Vidrios y Aluminios El Carmen</span>
     </header>
 
     <main id="app-root">
-      <!-- VISTA: Dashboard Operativo (estado en vivo y acciones rápidas del día) -->
+      <!-- VISTA: Dashboard Operativo (estado en vivo y acciones rápidas del día · Sección 5) -->
       <div class="view" data-view="dashboard">
 
         <!-- Cabecera limpia con acciones operativas inmediatas -->
         <div class="page-header">
           <div>
             <h2>Operación de hoy</h2>
-            <p class="text-muted" style="margin:.15rem 0 0; font-size:.86rem">Jueves 29 de octubre de 2026 · Monitoreo en vivo de los 3 módulos principales</p>
+            <p class="text-muted" id="dash-subtitulo-fecha" style="margin:.15rem 0 0; font-size:.86rem">Monitoreo en tiempo real de Caja y Ventas, Inventario y Contabilidad</p>
           </div>
           <div class="page-actions">
             <a class="btn btn-primary" href="caja.html">+ Nueva venta</a>
@@ -78,6 +79,8 @@
             <a class="btn btn-outline" href="contabilidad.html">+ Ingreso / Gasto</a>
           </div>
         </div>
+
+        <div id="dash-error-alert" class="alert alert-danger hidden" role="status" style="margin-bottom:1rem"></div>
 
         <!-- 3 tarjetas objetivas (1 por módulo: Caja y Ventas · Inventario · Contabilidad Básica) -->
         <div class="dash-pillars">
@@ -91,37 +94,37 @@
                 </span>
                 <span>Caja y Ventas</span>
               </div>
-              <span class="badge badge-success">Caja abierta</span>
+              <span class="badge badge-warning" id="dash-caja-estado">Caja cerrada</span>
             </div>
             <div class="pillar-body">
               <div class="pillar-main">
                 <div>
-                  <span class="caption">Ventas del turno actual</span>
-                  <div class="big" id="dash-ventas-turno">$ 1.100.000</div>
+                  <span class="caption">Ventas efectivas (turno / hoy)</span>
+                  <div class="big num" id="dash-ventas-turno">$ 0</div>
                 </div>
-                <span class="badge">12 ventas</span>
+                <span class="badge" id="dash-ventas-count">0 ventas</span>
               </div>
 
               <div class="meter">
-                <div class="meter-head"><span>Efectivo (58 %)</span><b class="num">$ 640.000</b></div>
-                <div class="meter-bar"><div class="meter-fill" style="width:58%"></div></div>
+                <div class="meter-head"><span id="dash-met-ef-label">Efectivo (0 %)</span><b class="num" id="dash-met-ef-val">$ 0</b></div>
+                <div class="meter-bar"><div class="meter-fill" id="dash-met-ef-bar" style="width:0%"></div></div>
               </div>
               <div class="meter">
-                <div class="meter-head"><span>Transferencia (28 %)</span><b class="num">$ 310.000</b></div>
-                <div class="meter-bar"><div class="meter-fill" style="width:28%"></div></div>
+                <div class="meter-head"><span id="dash-met-tr-label">Transferencia (0 %)</span><b class="num" id="dash-met-tr-val">$ 0</b></div>
+                <div class="meter-bar"><div class="meter-fill" id="dash-met-tr-bar" style="width:0%"></div></div>
               </div>
               <div class="meter">
-                <div class="meter-head"><span>Tarjeta (14 %)</span><b class="num">$ 150.000</b></div>
-                <div class="meter-bar"><div class="meter-fill" style="width:14%"></div></div>
+                <div class="meter-head"><span id="dash-met-tj-label">Tarjeta (0 %)</span><b class="num" id="dash-met-tj-val">$ 0</b></div>
+                <div class="meter-bar"><div class="meter-fill" id="dash-met-tj-bar" style="width:0%"></div></div>
               </div>
 
               <div class="summary" style="margin:0; padding-top:.55rem; border-top:1px solid var(--border)">
-                <div class="summary-row"><span>Base inicial</span><b class="num">$ 200.000</b></div>
-                <div class="summary-row"><span>Efectivo esperado en caja</span><b class="num">$ 840.000</b></div>
+                <div class="summary-row"><span>Base inicial</span><b class="num" id="dash-caja-base">$ 0</b></div>
+                <div class="summary-row"><span>Efectivo esperado en caja</span><b class="num" id="dash-caja-esperado">$ 0</b></div>
               </div>
             </div>
             <div class="pillar-foot">
-              <span class="text-muted">Cajero: Administrador</span>
+              <span class="text-muted" id="dash-caja-cajero">Sin turno activo</span>
               <a href="caja.html">Abrir Punto de Venta →</a>
             </div>
           </section>
@@ -135,35 +138,24 @@
                 </span>
                 <span>Inventario</span>
               </div>
-              <span class="badge badge-warning">3 por reponer</span>
+              <span class="badge badge-warning" id="dash-inv-badge">0 por reponer</span>
             </div>
             <div class="pillar-body">
               <div class="pillar-main">
                 <div>
                   <span class="caption">Alertas de reposición</span>
-                  <div class="big" id="dash-alertas-stock">3 críticos</div>
+                  <div class="big" id="dash-alertas-stock">0 críticos</div>
                 </div>
-                <span class="badge">128 productos</span>
+                <span class="badge" id="dash-total-productos">0 productos</span>
               </div>
 
-              <p class="label" style="margin:0">Requieren compra o entrada hoy</p>
+              <p class="label" style="margin:0">Estado de existencias críticas</p>
               <ul class="mini-list" id="dash-lista-alertas">
-                <li>
-                  <span><b>Silicona estructural</b><br><span class="text-muted">Mínimo: 6 u</span></span>
-                  <span class="badge stock-out">Agotado (0)</span>
-                </li>
-                <li>
-                  <span><b>Cerradura para vidrio</b><br><span class="text-muted">Mínimo: 5 u</span></span>
-                  <span class="badge stock-low">Quedan 3 u</span>
-                </li>
-                <li>
-                  <span><b>Perfil aluminio 1&quot;</b><br><span class="text-muted">Mínimo: 10 u</span></span>
-                  <span class="badge stock-low">Quedan 8 u</span>
-                </li>
+                <li><span class="text-muted">No hay productos registrados.</span></li>
               </ul>
             </div>
             <div class="pillar-foot">
-              <span class="text-muted">1 agotado · 2 en stock bajo</span>
+              <span class="text-muted" id="dash-inv-resumen-pie">0 agotados · 0 en stock bajo</span>
               <a href="inventario.html">Gestionar stock →</a>
             </div>
           </section>
@@ -177,53 +169,50 @@
                 </span>
                 <span>Contabilidad Básica</span>
               </div>
-              <span class="badge badge-success">Flujo positivo</span>
+              <span class="badge badge-success" id="dash-cont-badge">Sin movimientos</span>
             </div>
             <div class="pillar-body">
               <div class="pillar-main">
                 <div>
-                  <span class="caption">Balance neto de hoy</span>
-                  <div class="big text-income" id="dash-balance-hoy">+ $ 920.000</div>
+                  <span class="caption">Resultado del período</span>
+                  <div class="big num" id="dash-balance-hoy">$ 0</div>
                 </div>
-                <span class="badge">4 mov. hoy</span>
+                <span class="badge" id="dash-cont-count">0 mov.</span>
               </div>
 
               <div class="meter">
-                <div class="meter-head"><span>Ingresos de hoy</span><b class="num text-income">+ $ 1.100.000</b></div>
-                <div class="meter-bar"><div class="meter-fill success" style="width:100%"></div></div>
+                <div class="meter-head"><span>Ingresos registrados</span><b class="num text-income" id="dash-ingresos-val">$ 0</b></div>
+                <div class="meter-bar"><div class="meter-fill success" id="dash-ingresos-bar" style="width:0%"></div></div>
               </div>
               <div class="meter">
-                <div class="meter-head"><span>Gastos de hoy</span><b class="num text-expense">− $ 180.000</b></div>
-                <div class="meter-bar"><div class="meter-fill danger" style="width:16%"></div></div>
+                <div class="meter-head"><span>Gastos registrados</span><b class="num text-expense" id="dash-gastos-val">$ 0</b></div>
+                <div class="meter-bar"><div class="meter-fill danger" id="dash-gastos-bar" style="width:0%"></div></div>
               </div>
 
               <div class="summary" style="margin:0; padding-top:.55rem; border-top:1px solid var(--border)">
-                <div class="summary-row"><span>Último ingreso</span><span>Venta contado #0045 ($ 206k)</span></div>
-                <div class="summary-row"><span>Último gasto</span><span>Pago energía ($ 180k)</span></div>
+                <div class="summary-row"><span>Último ingreso</span><span id="dash-ultimo-ingreso">Sin registros</span></div>
+                <div class="summary-row"><span>Último gasto</span><span id="dash-ultimo-gasto">Sin registros</span></div>
               </div>
             </div>
             <div class="pillar-foot">
-              <span class="text-muted">Control interno</span>
+              <span class="text-muted">Control financiero real</span>
               <a href="contabilidad.html">Registrar movimiento →</a>
             </div>
           </section>
         </div>
 
         <!-- Actividad en vivo del turno -->
-        <div class="grid grid-2">
+        <div class="grid grid-2" style="margin-bottom:1.25rem">
           <section class="card">
             <div class="card-header">
-              <h3>Últimas ventas del turno</h3>
+              <h3>Últimas ventas registradas</h3>
               <a class="btn btn-outline" href="caja.html">Ir a Caja</a>
             </div>
             <div class="table-wrap">
               <table class="table">
                 <thead><tr><th>Hora</th><th>Detalle</th><th>Pago</th><th class="num">Total</th></tr></thead>
                 <tbody id="dash-ultimas-ventas">
-                  <tr><td>14:40</td><td>Vidrio templado 6 mm (2), Bisagra (2)</td><td><span class="badge">Efectivo</span></td><td class="num">$ 206.000</td></tr>
-                  <tr><td>13:15</td><td>Espejo 4 mm (3 m²)</td><td><span class="badge">Transferencia</span></td><td class="num">$ 195.000</td></tr>
-                  <tr><td>11:50</td><td>Riel corredizo 3 m (2), Perfil 1&quot; (4)</td><td><span class="badge">Efectivo</span></td><td class="num">$ 198.000</td></tr>
-                  <tr><td>10:25</td><td>Vidrio laminado 8 mm (2 m²)</td><td><span class="badge">Tarjeta</span></td><td class="num">$ 240.000</td></tr>
+                  <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">No hay ventas registradas.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -238,10 +227,40 @@
               <table class="table">
                 <thead><tr><th>Hora</th><th>Módulo</th><th>Operación</th><th class="num">Impacto</th></tr></thead>
                 <tbody id="dash-actividad-reciente">
-                  <tr><td>14:10</td><td><span class="badge">Inventario</span></td><td>Entrada · Vidrio templado 6 mm</td><td class="num">+ 10 m²</td></tr>
-                  <tr><td>12:30</td><td><span class="badge badge-danger">Contabilidad</span></td><td>Pago de energía del local</td><td class="num text-expense">− $ 180.000</td></tr>
-                  <tr><td>11:05</td><td><span class="badge badge-success">Contabilidad</span></td><td>Abono instalación ventanal</td><td class="num text-income">+ $ 500.000</td></tr>
-                  <tr><td>09:40</td><td><span class="badge badge-warning">Inventario</span></td><td>Salida por merma · Espejo 4 mm</td><td class="num">− 1 m²</td></tr>
+                  <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">No hay movimientos registrados.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- Productos más vendidos y Ventas por día -->
+        <div class="grid grid-2">
+          <section class="card">
+            <div class="card-header">
+              <h3>Productos más vendidos</h3>
+              <span class="badge" id="dash-top-prod-badge">Período actual</span>
+            </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Producto</th><th>Categoría</th><th class="num">Cant. vendida</th><th class="num">Importe</th></tr></thead>
+                <tbody id="dash-mas-vendidos">
+                  <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">No hay ventas registradas para calcular productos más vendidos.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header">
+              <h3>Ventas por día</h3>
+              <span class="badge">Excluye anuladas</span>
+            </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Fecha</th><th class="num">Operaciones</th><th class="num">Total vendido</th></tr></thead>
+                <tbody id="dash-ventas-por-dia">
+                  <tr><td colspan="3" class="text-muted" style="text-align:center; padding:1.25rem">No hay ventas registradas en el período.</td></tr>
                 </tbody>
               </table>
             </div>

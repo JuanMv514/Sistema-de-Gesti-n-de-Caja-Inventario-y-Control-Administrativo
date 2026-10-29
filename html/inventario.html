@@ -38,7 +38,7 @@
       </ul>
     </nav>
     <div class="sidebar-footer">
-      <div class="avatar">AD</div>
+      <div class="avatar" id="user-avatar">AD</div>
       <div class="user-meta"><strong id="user-name">Administrador</strong><span id="user-role">Rol: Administrador</span></div>
       <a class="logout" href="../index.html" title="Cerrar sesión" aria-label="Cerrar sesión">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
@@ -59,84 +59,233 @@
         <h1>Inventario</h1>
         <p>Catálogo, existencias y movimientos de entrada y salida</p>
       </div>
+      <span class="badge badge-warning" id="firebase-status-badge" title="Estado de conexión con Firebase Firestore" style="font-size:.74rem">Modo local · Firebase pendiente</span>
       <span class="topbar-date">Vidrios y Aluminios El Carmen</span>
     </header>
 
     <main id="app-root">
-      <!-- VISTA: Inventario (se inyecta en #app-root) -->
+      <!-- VISTA: Inventario (Sección 7 · Gestión real de productos, costos, existencias y Kardex) -->
       <div class="view" data-view="inventario">
 
         <div class="page-header">
-          <h2>Catálogo de productos</h2>
+          <div>
+            <h2>Catálogo y control de existencias</h2>
+            <p class="text-muted" style="margin:.15rem 0 0; font-size:.86rem">Productos por unidad (u), metro lineal (m) y metro cuadrado (m²), con trazabilidad de movimientos</p>
+          </div>
           <div class="page-actions">
-            <!-- Abre el modal (#modal-producto) o, con JavaScript, <dialog>.showModal() -->
-            <a class="btn btn-primary" href="#modal-producto">+ Nuevo Producto</a>
+            <button type="button" class="btn btn-primary" id="btn-nuevo-producto">+ Nuevo Producto</button>
           </div>
         </div>
 
+        <div id="inv-feedback" class="alert alert-info hidden" role="status" style="margin-bottom:1rem"></div>
+
         <div class="toolbar">
-          <input class="input" type="search" id="buscar-inventario" placeholder="Buscar por nombre o código">
-          <label class="check"><input type="checkbox" id="solo-bajo"> Solo stock bajo</label>
+          <input class="input" type="search" id="buscar-inventario" placeholder="Buscar por nombre, código o descripción">
+          <select class="select" id="inv-filtro-categoria" style="width:auto" aria-label="Filtrar por categoría">
+            <option value="Todos">Todas las categorías</option>
+            <option value="Vidrios">Vidrios</option>
+            <option value="Perfiles">Perfiles</option>
+            <option value="Accesorios">Accesorios</option>
+            <option value="Insumos">Insumos</option>
+          </select>
+          <label class="check"><input type="checkbox" id="solo-bajo"> Solo stock bajo o agotado</label>
+          <label class="check"><input type="checkbox" id="mostrar-inactivos"> Mostrar inactivos</label>
         </div>
 
         <!-- Catálogo completo -->
         <section class="card">
           <div class="table-wrap">
             <table class="table" id="tabla-productos">
-              <thead><tr><th>Código</th><th>Producto</th><th>Categoría</th><th class="num">Precio</th><th class="num">Stock</th><th class="num">Mínimo</th><th>Estado</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Producto</th>
+                  <th>Categoría</th>
+                  <th class="num">Costo compra</th>
+                  <th class="num">Precio venta</th>
+                  <th class="num">Stock</th>
+                  <th class="num">Mínimo</th>
+                  <th>Estado</th>
+                  <th class="text-right">Acciones</th>
+                </tr>
+              </thead>
               <tbody>
-                <!-- Estados dinámicos: .stock-ok / .stock-low / .stock-out y filas .row-low / .row-out -->
-                <tr><td>VT-006</td><td>Vidrio templado 6 mm</td><td>Vidrios</td><td class="num">$ 85.000</td><td class="num">24</td><td class="num">10</td><td><span class="badge stock-ok">Disponible</span></td></tr>
-                <tr><td>VL-008</td><td>Vidrio laminado 8 mm</td><td>Vidrios</td><td class="num">$ 120.000</td><td class="num">12</td><td class="num">10</td><td><span class="badge stock-ok">Disponible</span></td></tr>
-                <tr class="row-low"><td>CV-001</td><td>Cerradura para vidrio</td><td>Accesorios</td><td class="num">$ 54.000</td><td class="num">3</td><td class="num">5</td><td><span class="badge stock-low">Stock bajo</span></td></tr>
-                <tr class="row-low"><td>PA-100</td><td>Perfil aluminio 1&quot;</td><td>Perfiles</td><td class="num">$ 28.500</td><td class="num">8</td><td class="num">10</td><td><span class="badge stock-low">Stock bajo</span></td></tr>
-                <tr class="row-out"><td>SI-050</td><td>Silicona estructural</td><td>Insumos</td><td class="num">$ 16.500</td><td class="num">0</td><td class="num">6</td><td><span class="badge stock-out">Agotado</span></td></tr>
-                <tr><td>RC-300</td><td>Riel corredizo 3 m</td><td>Perfiles</td><td class="num">$ 42.000</td><td class="num">35</td><td class="num">8</td><td><span class="badge stock-ok">Disponible</span></td></tr>
+                <tr><td colspan="9" class="text-muted" style="text-align:center; padding:1.5rem">No hay productos disponibles.</td></tr>
               </tbody>
             </table>
           </div>
         </section>
 
-        <!-- Formularios: entradas y salidas de mercancía -->
+        <!-- Formularios: entradas y salidas justificadas de mercancía -->
         <div class="grid grid-2" style="margin-top:1.25rem">
           <form class="card" id="form-entrada">
             <div class="card-header"><h3>Registrar entrada</h3><span class="badge badge-success">+ Stock</span></div>
             <div class="card-body form-grid">
-              <div class="field full"><label class="label" for="ent-producto">Producto</label>
-                <select class="select" id="ent-producto"><option>Vidrio templado 6 mm</option><option>Cerradura para vidrio</option><option>Silicona estructural</option></select></div>
-              <div class="field"><label class="label" for="ent-cantidad">Cantidad</label><input class="input" id="ent-cantidad" type="number" min="1" placeholder="0" required></div>
-              <div class="field"><label class="label" for="ent-motivo">Motivo</label><input class="input" id="ent-motivo" placeholder="Compra a proveedor"></div>
-              <div class="field full"><button type="submit" class="btn btn-primary">Registrar entrada</button></div>
+              <div class="field full">
+                <label class="label" for="ent-producto">Producto *</label>
+                <select class="select" id="ent-producto" required></select>
+              </div>
+              <div class="field">
+                <label class="label" for="ent-origen">Tipo de entrada *</label>
+                <select class="select" id="ent-origen">
+                  <option value="Entrada por compra">Entrada por compra a proveedor</option>
+                  <option value="Ajuste autorizado">Ajuste autorizado (+)</option>
+                  <option value="Corrección justificada">Corrección justificada (+)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label" for="ent-cantidad">Cantidad *</label>
+                <input class="input num" id="ent-cantidad" type="number" min="0.01" step="0.01" placeholder="0" required>
+              </div>
+              <div class="field full">
+                <label class="label" for="ent-motivo">Motivo / Factura o proveedor *</label>
+                <input class="input" id="ent-motivo" placeholder="Ej: Compra factura #412 Proveedor Vitral" required>
+              </div>
+              <div class="field full">
+                <label class="check">
+                  <input type="checkbox" id="ent-registrar-gasto">
+                  Registrar simultáneamente el gasto de esta compra en Contabilidad
+                </label>
+              </div>
+              <div class="field hidden" id="box-ent-metodo">
+                <label class="label" for="ent-metodo-pago">Método de pago de la compra</label>
+                <select class="select" id="ent-metodo-pago">
+                  <option value="Transferencia">Transferencia</option>
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Tarjeta débito">Tarjeta débito</option>
+                </select>
+              </div>
+              <div class="field hidden" id="box-ent-costo">
+                <label class="label" for="ent-costo-total">Costo total pagado (COP)</label>
+                <input class="input num" id="ent-costo-total" type="number" min="0" step="100" placeholder="Autocalculado según costo">
+              </div>
+              <div class="field full">
+                <button type="submit" class="btn btn-primary">Confirmar entrada</button>
+              </div>
             </div>
           </form>
 
           <form class="card" id="form-salida">
-            <div class="card-header"><h3>Registrar salida</h3><span class="badge badge-danger">− Stock</span></div>
+            <div class="card-header"><h3>Registrar salida / baja</h3><span class="badge badge-danger">− Stock</span></div>
             <div class="card-body form-grid">
-              <div class="field full"><label class="label" for="sal-producto">Producto</label>
-                <select class="select" id="sal-producto"><option>Vidrio templado 6 mm</option><option>Cerradura para vidrio</option><option>Silicona estructural</option></select></div>
-              <div class="field"><label class="label" for="sal-cantidad">Cantidad</label><input class="input" id="sal-cantidad" type="number" min="1" placeholder="0" required></div>
-              <div class="field"><label class="label" for="sal-motivo">Motivo</label><input class="input" id="sal-motivo" placeholder="Merma, ajuste, uso interno"></div>
-              <div class="field full"><button type="submit" class="btn btn-outline">Registrar salida</button></div>
+              <div class="field full">
+                <label class="label" for="sal-producto">Producto *</label>
+                <select class="select" id="sal-producto" required></select>
+              </div>
+              <div class="field">
+                <label class="label" for="sal-origen">Tipo de salida *</label>
+                <select class="select" id="sal-origen">
+                  <option value="Pérdida o daño">Pérdida o daño registrado (rotura/merma)</option>
+                  <option value="Ajuste autorizado">Ajuste autorizado (−)</option>
+                  <option value="Corrección justificada">Corrección justificada (−)</option>
+                  <option value="Uso interno en obra">Uso interno / instalación</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label" for="sal-cantidad">Cantidad *</label>
+                <input class="input num" id="sal-cantidad" type="number" min="0.01" step="0.01" placeholder="0" required>
+              </div>
+              <div class="field full">
+                <label class="label" for="sal-motivo">Motivo obligatorio *</label>
+                <input class="input" id="sal-motivo" placeholder="Ej: Lámina fisurada en descargue / ajuste de conteo físico" required>
+              </div>
+              <div class="field full">
+                <button type="submit" class="btn btn-outline">Confirmar salida</button>
+              </div>
             </div>
           </form>
         </div>
 
-        <!-- Modal: nuevo producto (overlay oscuro con z-index alto) -->
+        <!-- Historial de movimientos de inventario (Kardex) -->
+        <section class="card" style="margin-top:1.25rem">
+          <div class="card-header">
+            <h3>Historial de movimientos de inventario (Kardex)</h3>
+            <span class="badge" id="inv-kardex-count">0 movimientos</span>
+          </div>
+          <div class="table-wrap">
+            <table class="table" id="tabla-kardex-inventario">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Código</th>
+                  <th>Producto</th>
+                  <th>Tipo</th>
+                  <th>Origen</th>
+                  <th class="num">Cantidad</th>
+                  <th class="num">Stock ant.</th>
+                  <th class="num">Stock nuevo</th>
+                  <th>Motivo</th>
+                  <th>Responsable</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="10" class="text-muted" style="text-align:center; padding:1.5rem">No hay movimientos de inventario registrados.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Modal: crear o editar producto -->
         <div class="modal-overlay" id="modal-producto" role="dialog" aria-modal="true" aria-labelledby="titulo-producto">
           <div class="modal">
             <div class="modal-header"><h3 id="titulo-producto">Nuevo producto</h3><a class="modal-close" href="#" aria-label="Cerrar">×</a></div>
             <form id="form-producto">
+              <input type="hidden" id="prod-id" value="">
               <div class="modal-body form-grid">
-                <div class="field full"><label class="label" for="prod-nombre">Nombre</label><input class="input" id="prod-nombre" required></div>
-                <div class="field"><label class="label" for="prod-codigo">Código</label><input class="input" id="prod-codigo"></div>
-                <div class="field"><label class="label" for="prod-categoria">Categoría</label>
-                  <select class="select" id="prod-categoria"><option>Vidrios</option><option>Perfiles</option><option>Accesorios</option><option>Insumos</option></select></div>
-                <div class="field"><label class="label" for="prod-precio">Precio</label><input class="input" id="prod-precio" type="number" min="0" required></div>
-                <div class="field"><label class="label" for="prod-stock">Stock inicial</label><input class="input" id="prod-stock" type="number" min="0" value="0"></div>
-                <div class="field"><label class="label" for="prod-minimo">Stock mínimo</label><input class="input" id="prod-minimo" type="number" min="0" value="0"><span class="help">Se alertará al llegar a este nivel.</span></div>
+                <div class="field full">
+                  <label class="label" for="prod-nombre">Nombre del producto *</label>
+                  <input class="input" id="prod-nombre" required placeholder="Ej: Vidrio templado 10 mm">
+                </div>
+                <div class="field">
+                  <label class="label" for="prod-codigo">Código único *</label>
+                  <input class="input" id="prod-codigo" required placeholder="Ej: VT-010">
+                </div>
+                <div class="field">
+                  <label class="label" for="prod-categoria">Categoría *</label>
+                  <select class="select" id="prod-categoria">
+                    <option value="Vidrios">Vidrios</option>
+                    <option value="Perfiles">Perfiles</option>
+                    <option value="Accesorios">Accesorios</option>
+                    <option value="Insumos">Insumos</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="label" for="prod-unidad">Unidad de medida *</label>
+                  <select class="select" id="prod-unidad">
+                    <option value="m²">Metro cuadrado (m²)</option>
+                    <option value="m">Metro lineal (m)</option>
+                    <option value="u">Unidad (u)</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="label" for="prod-precio-compra">Precio de compra (COP)</label>
+                  <input class="input num" id="prod-precio-compra" type="number" min="0" step="100" value="0" required>
+                </div>
+                <div class="field">
+                  <label class="label" for="prod-precio">Precio de venta (COP) *</label>
+                  <input class="input num" id="prod-precio" type="number" min="0" step="100" required>
+                </div>
+                <div class="field" id="field-prod-stock-inicial">
+                  <label class="label" for="prod-stock">Stock inicial</label>
+                  <input class="input num" id="prod-stock" type="number" min="0" step="0.01" value="0">
+                </div>
+                <div class="field">
+                  <label class="label" for="prod-minimo">Stock mínimo de alerta</label>
+                  <input class="input num" id="prod-minimo" type="number" min="0" step="0.01" value="5">
+                  <span class="help">Se alertará cuando el stock llegue a este nivel.</span>
+                </div>
+                <div class="field full">
+                  <label class="label" for="prod-descripcion">Descripción opcional</label>
+                  <input class="input" id="prod-descripcion" placeholder="Especificación técnica, calibre, acabado">
+                </div>
+                <div class="field full">
+                  <div id="prod-error" class="alert alert-danger hidden"></div>
+                </div>
               </div>
-              <div class="modal-footer"><a class="btn btn-outline" href="#">Cancelar</a><button type="submit" class="btn btn-primary">Guardar producto</button></div>
+              <div class="modal-footer">
+                <a class="btn btn-outline" href="#">Cancelar</a>
+                <button type="submit" class="btn btn-primary" id="btn-guardar-producto">Guardar producto</button>
+              </div>
             </form>
           </div>
         </div>

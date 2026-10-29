@@ -65,7 +65,7 @@
       </ul>
     </nav>
     <div class="sidebar-footer">
-      <div class="avatar">AD</div>
+      <div class="avatar" id="user-avatar">AD</div>
       <div class="user-meta"><strong id="user-name">Administrador</strong><span id="user-role">Rol: Administrador</span></div>
       <a class="logout" href="index.html" title="Cerrar sesión" aria-label="Cerrar sesión">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
@@ -86,18 +86,19 @@
         <h1>Dashboard</h1>
         <p>Estado en tiempo real de Caja y Ventas, Inventario y Contabilidad</p>
       </div>
+      <span class="badge badge-warning" id="firebase-status-badge" title="Estado de conexión con Firebase Firestore" style="font-size:.74rem">Modo local · Firebase pendiente</span>
       <span class="topbar-date">Vidrios y Aluminios El Carmen</span>
     </header>
 
     <main id="app-root">
-      <!-- VISTA: Dashboard Operativo (estado en vivo y acciones rápidas del día) -->
+      <!-- VISTA: Dashboard Operativo (estado en vivo y acciones rápidas del día · Sección 5) -->
       <div class="view" data-view="dashboard">
 
         <!-- Cabecera limpia con acciones operativas inmediatas -->
         <div class="page-header">
           <div>
             <h2>Operación de hoy</h2>
-            <p class="text-muted" style="margin:.15rem 0 0; font-size:.86rem">Jueves 29 de octubre de 2026 · Monitoreo en vivo de los 3 módulos principales</p>
+            <p class="text-muted" id="dash-subtitulo-fecha" style="margin:.15rem 0 0; font-size:.86rem">Monitoreo en tiempo real de Caja y Ventas, Inventario y Contabilidad</p>
           </div>
           <div class="page-actions">
             <a class="btn btn-primary" href="html/caja.html">+ Nueva venta</a>
@@ -105,6 +106,8 @@
             <a class="btn btn-outline" href="html/contabilidad.html">+ Ingreso / Gasto</a>
           </div>
         </div>
+
+        <div id="dash-error-alert" class="alert alert-danger hidden" role="status" style="margin-bottom:1rem"></div>
 
         <!-- 3 tarjetas objetivas (1 por módulo: Caja y Ventas · Inventario · Contabilidad Básica) -->
         <div class="dash-pillars">
@@ -118,37 +121,37 @@
                 </span>
                 <span>Caja y Ventas</span>
               </div>
-              <span class="badge badge-success">Caja abierta</span>
+              <span class="badge badge-warning" id="dash-caja-estado">Caja cerrada</span>
             </div>
             <div class="pillar-body">
               <div class="pillar-main">
                 <div>
-                  <span class="caption">Ventas del turno actual</span>
-                  <div class="big" id="dash-ventas-turno">$ 1.100.000</div>
+                  <span class="caption">Ventas efectivas (turno / hoy)</span>
+                  <div class="big num" id="dash-ventas-turno">$ 0</div>
                 </div>
-                <span class="badge">12 ventas</span>
+                <span class="badge" id="dash-ventas-count">0 ventas</span>
               </div>
 
               <div class="meter">
-                <div class="meter-head"><span>Efectivo (58 %)</span><b class="num">$ 640.000</b></div>
-                <div class="meter-bar"><div class="meter-fill" style="width:58%"></div></div>
+                <div class="meter-head"><span id="dash-met-ef-label">Efectivo (0 %)</span><b class="num" id="dash-met-ef-val">$ 0</b></div>
+                <div class="meter-bar"><div class="meter-fill" id="dash-met-ef-bar" style="width:0%"></div></div>
               </div>
               <div class="meter">
-                <div class="meter-head"><span>Transferencia (28 %)</span><b class="num">$ 310.000</b></div>
-                <div class="meter-bar"><div class="meter-fill" style="width:28%"></div></div>
+                <div class="meter-head"><span id="dash-met-tr-label">Transferencia (0 %)</span><b class="num" id="dash-met-tr-val">$ 0</b></div>
+                <div class="meter-bar"><div class="meter-fill" id="dash-met-tr-bar" style="width:0%"></div></div>
               </div>
               <div class="meter">
-                <div class="meter-head"><span>Tarjeta (14 %)</span><b class="num">$ 150.000</b></div>
-                <div class="meter-bar"><div class="meter-fill" style="width:14%"></div></div>
+                <div class="meter-head"><span id="dash-met-tj-label">Tarjeta (0 %)</span><b class="num" id="dash-met-tj-val">$ 0</b></div>
+                <div class="meter-bar"><div class="meter-fill" id="dash-met-tj-bar" style="width:0%"></div></div>
               </div>
 
               <div class="summary" style="margin:0; padding-top:.55rem; border-top:1px solid var(--border)">
-                <div class="summary-row"><span>Base inicial</span><b class="num">$ 200.000</b></div>
-                <div class="summary-row"><span>Efectivo esperado en caja</span><b class="num">$ 840.000</b></div>
+                <div class="summary-row"><span>Base inicial</span><b class="num" id="dash-caja-base">$ 0</b></div>
+                <div class="summary-row"><span>Efectivo esperado en caja</span><b class="num" id="dash-caja-esperado">$ 0</b></div>
               </div>
             </div>
             <div class="pillar-foot">
-              <span class="text-muted">Cajero: Administrador</span>
+              <span class="text-muted" id="dash-caja-cajero">Sin turno activo</span>
               <a href="html/caja.html">Abrir Punto de Venta →</a>
             </div>
           </section>
@@ -162,35 +165,24 @@
                 </span>
                 <span>Inventario</span>
               </div>
-              <span class="badge badge-warning">3 por reponer</span>
+              <span class="badge badge-warning" id="dash-inv-badge">0 por reponer</span>
             </div>
             <div class="pillar-body">
               <div class="pillar-main">
                 <div>
                   <span class="caption">Alertas de reposición</span>
-                  <div class="big" id="dash-alertas-stock">3 críticos</div>
+                  <div class="big" id="dash-alertas-stock">0 críticos</div>
                 </div>
-                <span class="badge">128 productos</span>
+                <span class="badge" id="dash-total-productos">0 productos</span>
               </div>
 
-              <p class="label" style="margin:0">Requieren compra o entrada hoy</p>
+              <p class="label" style="margin:0">Estado de existencias críticas</p>
               <ul class="mini-list" id="dash-lista-alertas">
-                <li>
-                  <span><b>Silicona estructural</b><br><span class="text-muted">Mínimo: 6 u</span></span>
-                  <span class="badge stock-out">Agotado (0)</span>
-                </li>
-                <li>
-                  <span><b>Cerradura para vidrio</b><br><span class="text-muted">Mínimo: 5 u</span></span>
-                  <span class="badge stock-low">Quedan 3 u</span>
-                </li>
-                <li>
-                  <span><b>Perfil aluminio 1&quot;</b><br><span class="text-muted">Mínimo: 10 u</span></span>
-                  <span class="badge stock-low">Quedan 8 u</span>
-                </li>
+                <li><span class="text-muted">No hay productos registrados.</span></li>
               </ul>
             </div>
             <div class="pillar-foot">
-              <span class="text-muted">1 agotado · 2 en stock bajo</span>
+              <span class="text-muted" id="dash-inv-resumen-pie">0 agotados · 0 en stock bajo</span>
               <a href="html/inventario.html">Gestionar stock →</a>
             </div>
           </section>
@@ -204,53 +196,50 @@
                 </span>
                 <span>Contabilidad Básica</span>
               </div>
-              <span class="badge badge-success">Flujo positivo</span>
+              <span class="badge badge-success" id="dash-cont-badge">Sin movimientos</span>
             </div>
             <div class="pillar-body">
               <div class="pillar-main">
                 <div>
-                  <span class="caption">Balance neto de hoy</span>
-                  <div class="big text-income" id="dash-balance-hoy">+ $ 920.000</div>
+                  <span class="caption">Resultado del período</span>
+                  <div class="big num" id="dash-balance-hoy">$ 0</div>
                 </div>
-                <span class="badge">4 mov. hoy</span>
+                <span class="badge" id="dash-cont-count">0 mov.</span>
               </div>
 
               <div class="meter">
-                <div class="meter-head"><span>Ingresos de hoy</span><b class="num text-income">+ $ 1.100.000</b></div>
-                <div class="meter-bar"><div class="meter-fill success" style="width:100%"></div></div>
+                <div class="meter-head"><span>Ingresos registrados</span><b class="num text-income" id="dash-ingresos-val">$ 0</b></div>
+                <div class="meter-bar"><div class="meter-fill success" id="dash-ingresos-bar" style="width:0%"></div></div>
               </div>
               <div class="meter">
-                <div class="meter-head"><span>Gastos de hoy</span><b class="num text-expense">− $ 180.000</b></div>
-                <div class="meter-bar"><div class="meter-fill danger" style="width:16%"></div></div>
+                <div class="meter-head"><span>Gastos registrados</span><b class="num text-expense" id="dash-gastos-val">$ 0</b></div>
+                <div class="meter-bar"><div class="meter-fill danger" id="dash-gastos-bar" style="width:0%"></div></div>
               </div>
 
               <div class="summary" style="margin:0; padding-top:.55rem; border-top:1px solid var(--border)">
-                <div class="summary-row"><span>Último ingreso</span><span>Venta contado #0045 ($ 206k)</span></div>
-                <div class="summary-row"><span>Último gasto</span><span>Pago energía ($ 180k)</span></div>
+                <div class="summary-row"><span>Último ingreso</span><span id="dash-ultimo-ingreso">Sin registros</span></div>
+                <div class="summary-row"><span>Último gasto</span><span id="dash-ultimo-gasto">Sin registros</span></div>
               </div>
             </div>
             <div class="pillar-foot">
-              <span class="text-muted">Control interno</span>
+              <span class="text-muted">Control financiero real</span>
               <a href="html/contabilidad.html">Registrar movimiento →</a>
             </div>
           </section>
         </div>
 
         <!-- Actividad en vivo del turno -->
-        <div class="grid grid-2">
+        <div class="grid grid-2" style="margin-bottom:1.25rem">
           <section class="card">
             <div class="card-header">
-              <h3>Últimas ventas del turno</h3>
+              <h3>Últimas ventas registradas</h3>
               <a class="btn btn-outline" href="html/caja.html">Ir a Caja</a>
             </div>
             <div class="table-wrap">
               <table class="table">
                 <thead><tr><th>Hora</th><th>Detalle</th><th>Pago</th><th class="num">Total</th></tr></thead>
                 <tbody id="dash-ultimas-ventas">
-                  <tr><td>14:40</td><td>Vidrio templado 6 mm (2), Bisagra (2)</td><td><span class="badge">Efectivo</span></td><td class="num">$ 206.000</td></tr>
-                  <tr><td>13:15</td><td>Espejo 4 mm (3 m²)</td><td><span class="badge">Transferencia</span></td><td class="num">$ 195.000</td></tr>
-                  <tr><td>11:50</td><td>Riel corredizo 3 m (2), Perfil 1&quot; (4)</td><td><span class="badge">Efectivo</span></td><td class="num">$ 198.000</td></tr>
-                  <tr><td>10:25</td><td>Vidrio laminado 8 mm (2 m²)</td><td><span class="badge">Tarjeta</span></td><td class="num">$ 240.000</td></tr>
+                  <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">No hay ventas registradas.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -265,10 +254,40 @@
               <table class="table">
                 <thead><tr><th>Hora</th><th>Módulo</th><th>Operación</th><th class="num">Impacto</th></tr></thead>
                 <tbody id="dash-actividad-reciente">
-                  <tr><td>14:10</td><td><span class="badge">Inventario</span></td><td>Entrada · Vidrio templado 6 mm</td><td class="num">+ 10 m²</td></tr>
-                  <tr><td>12:30</td><td><span class="badge badge-danger">Contabilidad</span></td><td>Pago de energía del local</td><td class="num text-expense">− $ 180.000</td></tr>
-                  <tr><td>11:05</td><td><span class="badge badge-success">Contabilidad</span></td><td>Abono instalación ventanal</td><td class="num text-income">+ $ 500.000</td></tr>
-                  <tr><td>09:40</td><td><span class="badge badge-warning">Inventario</span></td><td>Salida por merma · Espejo 4 mm</td><td class="num">− 1 m²</td></tr>
+                  <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">No hay movimientos registrados.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- Productos más vendidos y Ventas por día -->
+        <div class="grid grid-2">
+          <section class="card">
+            <div class="card-header">
+              <h3>Productos más vendidos</h3>
+              <span class="badge" id="dash-top-prod-badge">Período actual</span>
+            </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Producto</th><th>Categoría</th><th class="num">Cant. vendida</th><th class="num">Importe</th></tr></thead>
+                <tbody id="dash-mas-vendidos">
+                  <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">No hay ventas registradas para calcular productos más vendidos.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header">
+              <h3>Ventas por día</h3>
+              <span class="badge">Excluye anuladas</span>
+            </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Fecha</th><th class="num">Operaciones</th><th class="num">Total vendido</th></tr></thead>
+                <tbody id="dash-ventas-por-dia">
+                  <tr><td colspan="3" class="text-muted" style="text-align:center; padding:1.25rem">No hay ventas registradas en el período.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -286,14 +305,14 @@
 
   <!-- Plantillas SPA preempacadas (respaldo instantaneo si no se usa fetch) -->
   <template id="tpl-dashboard">
-      <!-- VISTA: Dashboard Operativo (estado en vivo y acciones rápidas del día) -->
+      <!-- VISTA: Dashboard Operativo (estado en vivo y acciones rápidas del día · Sección 5) -->
       <div class="view" data-view="dashboard">
 
         <!-- Cabecera limpia con acciones operativas inmediatas -->
         <div class="page-header">
           <div>
             <h2>Operación de hoy</h2>
-            <p class="text-muted" style="margin:.15rem 0 0; font-size:.86rem">Jueves 29 de octubre de 2026 · Monitoreo en vivo de los 3 módulos principales</p>
+            <p class="text-muted" id="dash-subtitulo-fecha" style="margin:.15rem 0 0; font-size:.86rem">Monitoreo en tiempo real de Caja y Ventas, Inventario y Contabilidad</p>
           </div>
           <div class="page-actions">
             <a class="btn btn-primary" href="html/caja.html">+ Nueva venta</a>
@@ -301,6 +320,8 @@
             <a class="btn btn-outline" href="html/contabilidad.html">+ Ingreso / Gasto</a>
           </div>
         </div>
+
+        <div id="dash-error-alert" class="alert alert-danger hidden" role="status" style="margin-bottom:1rem"></div>
 
         <!-- 3 tarjetas objetivas (1 por módulo: Caja y Ventas · Inventario · Contabilidad Básica) -->
         <div class="dash-pillars">
@@ -314,37 +335,37 @@
                 </span>
                 <span>Caja y Ventas</span>
               </div>
-              <span class="badge badge-success">Caja abierta</span>
+              <span class="badge badge-warning" id="dash-caja-estado">Caja cerrada</span>
             </div>
             <div class="pillar-body">
               <div class="pillar-main">
                 <div>
-                  <span class="caption">Ventas del turno actual</span>
-                  <div class="big" id="dash-ventas-turno">$ 1.100.000</div>
+                  <span class="caption">Ventas efectivas (turno / hoy)</span>
+                  <div class="big num" id="dash-ventas-turno">$ 0</div>
                 </div>
-                <span class="badge">12 ventas</span>
+                <span class="badge" id="dash-ventas-count">0 ventas</span>
               </div>
 
               <div class="meter">
-                <div class="meter-head"><span>Efectivo (58 %)</span><b class="num">$ 640.000</b></div>
-                <div class="meter-bar"><div class="meter-fill" style="width:58%"></div></div>
+                <div class="meter-head"><span id="dash-met-ef-label">Efectivo (0 %)</span><b class="num" id="dash-met-ef-val">$ 0</b></div>
+                <div class="meter-bar"><div class="meter-fill" id="dash-met-ef-bar" style="width:0%"></div></div>
               </div>
               <div class="meter">
-                <div class="meter-head"><span>Transferencia (28 %)</span><b class="num">$ 310.000</b></div>
-                <div class="meter-bar"><div class="meter-fill" style="width:28%"></div></div>
+                <div class="meter-head"><span id="dash-met-tr-label">Transferencia (0 %)</span><b class="num" id="dash-met-tr-val">$ 0</b></div>
+                <div class="meter-bar"><div class="meter-fill" id="dash-met-tr-bar" style="width:0%"></div></div>
               </div>
               <div class="meter">
-                <div class="meter-head"><span>Tarjeta (14 %)</span><b class="num">$ 150.000</b></div>
-                <div class="meter-bar"><div class="meter-fill" style="width:14%"></div></div>
+                <div class="meter-head"><span id="dash-met-tj-label">Tarjeta (0 %)</span><b class="num" id="dash-met-tj-val">$ 0</b></div>
+                <div class="meter-bar"><div class="meter-fill" id="dash-met-tj-bar" style="width:0%"></div></div>
               </div>
 
               <div class="summary" style="margin:0; padding-top:.55rem; border-top:1px solid var(--border)">
-                <div class="summary-row"><span>Base inicial</span><b class="num">$ 200.000</b></div>
-                <div class="summary-row"><span>Efectivo esperado en caja</span><b class="num">$ 840.000</b></div>
+                <div class="summary-row"><span>Base inicial</span><b class="num" id="dash-caja-base">$ 0</b></div>
+                <div class="summary-row"><span>Efectivo esperado en caja</span><b class="num" id="dash-caja-esperado">$ 0</b></div>
               </div>
             </div>
             <div class="pillar-foot">
-              <span class="text-muted">Cajero: Administrador</span>
+              <span class="text-muted" id="dash-caja-cajero">Sin turno activo</span>
               <a href="html/caja.html">Abrir Punto de Venta →</a>
             </div>
           </section>
@@ -358,35 +379,24 @@
                 </span>
                 <span>Inventario</span>
               </div>
-              <span class="badge badge-warning">3 por reponer</span>
+              <span class="badge badge-warning" id="dash-inv-badge">0 por reponer</span>
             </div>
             <div class="pillar-body">
               <div class="pillar-main">
                 <div>
                   <span class="caption">Alertas de reposición</span>
-                  <div class="big" id="dash-alertas-stock">3 críticos</div>
+                  <div class="big" id="dash-alertas-stock">0 críticos</div>
                 </div>
-                <span class="badge">128 productos</span>
+                <span class="badge" id="dash-total-productos">0 productos</span>
               </div>
 
-              <p class="label" style="margin:0">Requieren compra o entrada hoy</p>
+              <p class="label" style="margin:0">Estado de existencias críticas</p>
               <ul class="mini-list" id="dash-lista-alertas">
-                <li>
-                  <span><b>Silicona estructural</b><br><span class="text-muted">Mínimo: 6 u</span></span>
-                  <span class="badge stock-out">Agotado (0)</span>
-                </li>
-                <li>
-                  <span><b>Cerradura para vidrio</b><br><span class="text-muted">Mínimo: 5 u</span></span>
-                  <span class="badge stock-low">Quedan 3 u</span>
-                </li>
-                <li>
-                  <span><b>Perfil aluminio 1&quot;</b><br><span class="text-muted">Mínimo: 10 u</span></span>
-                  <span class="badge stock-low">Quedan 8 u</span>
-                </li>
+                <li><span class="text-muted">No hay productos registrados.</span></li>
               </ul>
             </div>
             <div class="pillar-foot">
-              <span class="text-muted">1 agotado · 2 en stock bajo</span>
+              <span class="text-muted" id="dash-inv-resumen-pie">0 agotados · 0 en stock bajo</span>
               <a href="html/inventario.html">Gestionar stock →</a>
             </div>
           </section>
@@ -400,53 +410,50 @@
                 </span>
                 <span>Contabilidad Básica</span>
               </div>
-              <span class="badge badge-success">Flujo positivo</span>
+              <span class="badge badge-success" id="dash-cont-badge">Sin movimientos</span>
             </div>
             <div class="pillar-body">
               <div class="pillar-main">
                 <div>
-                  <span class="caption">Balance neto de hoy</span>
-                  <div class="big text-income" id="dash-balance-hoy">+ $ 920.000</div>
+                  <span class="caption">Resultado del período</span>
+                  <div class="big num" id="dash-balance-hoy">$ 0</div>
                 </div>
-                <span class="badge">4 mov. hoy</span>
+                <span class="badge" id="dash-cont-count">0 mov.</span>
               </div>
 
               <div class="meter">
-                <div class="meter-head"><span>Ingresos de hoy</span><b class="num text-income">+ $ 1.100.000</b></div>
-                <div class="meter-bar"><div class="meter-fill success" style="width:100%"></div></div>
+                <div class="meter-head"><span>Ingresos registrados</span><b class="num text-income" id="dash-ingresos-val">$ 0</b></div>
+                <div class="meter-bar"><div class="meter-fill success" id="dash-ingresos-bar" style="width:0%"></div></div>
               </div>
               <div class="meter">
-                <div class="meter-head"><span>Gastos de hoy</span><b class="num text-expense">− $ 180.000</b></div>
-                <div class="meter-bar"><div class="meter-fill danger" style="width:16%"></div></div>
+                <div class="meter-head"><span>Gastos registrados</span><b class="num text-expense" id="dash-gastos-val">$ 0</b></div>
+                <div class="meter-bar"><div class="meter-fill danger" id="dash-gastos-bar" style="width:0%"></div></div>
               </div>
 
               <div class="summary" style="margin:0; padding-top:.55rem; border-top:1px solid var(--border)">
-                <div class="summary-row"><span>Último ingreso</span><span>Venta contado #0045 ($ 206k)</span></div>
-                <div class="summary-row"><span>Último gasto</span><span>Pago energía ($ 180k)</span></div>
+                <div class="summary-row"><span>Último ingreso</span><span id="dash-ultimo-ingreso">Sin registros</span></div>
+                <div class="summary-row"><span>Último gasto</span><span id="dash-ultimo-gasto">Sin registros</span></div>
               </div>
             </div>
             <div class="pillar-foot">
-              <span class="text-muted">Control interno</span>
+              <span class="text-muted">Control financiero real</span>
               <a href="html/contabilidad.html">Registrar movimiento →</a>
             </div>
           </section>
         </div>
 
         <!-- Actividad en vivo del turno -->
-        <div class="grid grid-2">
+        <div class="grid grid-2" style="margin-bottom:1.25rem">
           <section class="card">
             <div class="card-header">
-              <h3>Últimas ventas del turno</h3>
+              <h3>Últimas ventas registradas</h3>
               <a class="btn btn-outline" href="html/caja.html">Ir a Caja</a>
             </div>
             <div class="table-wrap">
               <table class="table">
                 <thead><tr><th>Hora</th><th>Detalle</th><th>Pago</th><th class="num">Total</th></tr></thead>
                 <tbody id="dash-ultimas-ventas">
-                  <tr><td>14:40</td><td>Vidrio templado 6 mm (2), Bisagra (2)</td><td><span class="badge">Efectivo</span></td><td class="num">$ 206.000</td></tr>
-                  <tr><td>13:15</td><td>Espejo 4 mm (3 m²)</td><td><span class="badge">Transferencia</span></td><td class="num">$ 195.000</td></tr>
-                  <tr><td>11:50</td><td>Riel corredizo 3 m (2), Perfil 1&quot; (4)</td><td><span class="badge">Efectivo</span></td><td class="num">$ 198.000</td></tr>
-                  <tr><td>10:25</td><td>Vidrio laminado 8 mm (2 m²)</td><td><span class="badge">Tarjeta</span></td><td class="num">$ 240.000</td></tr>
+                  <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">No hay ventas registradas.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -461,10 +468,40 @@
               <table class="table">
                 <thead><tr><th>Hora</th><th>Módulo</th><th>Operación</th><th class="num">Impacto</th></tr></thead>
                 <tbody id="dash-actividad-reciente">
-                  <tr><td>14:10</td><td><span class="badge">Inventario</span></td><td>Entrada · Vidrio templado 6 mm</td><td class="num">+ 10 m²</td></tr>
-                  <tr><td>12:30</td><td><span class="badge badge-danger">Contabilidad</span></td><td>Pago de energía del local</td><td class="num text-expense">− $ 180.000</td></tr>
-                  <tr><td>11:05</td><td><span class="badge badge-success">Contabilidad</span></td><td>Abono instalación ventanal</td><td class="num text-income">+ $ 500.000</td></tr>
-                  <tr><td>09:40</td><td><span class="badge badge-warning">Inventario</span></td><td>Salida por merma · Espejo 4 mm</td><td class="num">− 1 m²</td></tr>
+                  <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">No hay movimientos registrados.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- Productos más vendidos y Ventas por día -->
+        <div class="grid grid-2">
+          <section class="card">
+            <div class="card-header">
+              <h3>Productos más vendidos</h3>
+              <span class="badge" id="dash-top-prod-badge">Período actual</span>
+            </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Producto</th><th>Categoría</th><th class="num">Cant. vendida</th><th class="num">Importe</th></tr></thead>
+                <tbody id="dash-mas-vendidos">
+                  <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">No hay ventas registradas para calcular productos más vendidos.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header">
+              <h3>Ventas por día</h3>
+              <span class="badge">Excluye anuladas</span>
+            </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Fecha</th><th class="num">Operaciones</th><th class="num">Total vendido</th></tr></thead>
+                <tbody id="dash-ventas-por-dia">
+                  <tr><td colspan="3" class="text-muted" style="text-align:center; padding:1.25rem">No hay ventas registradas en el período.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -915,93 +952,255 @@
       </div>
   </template>
   <template id="tpl-inventario">
-      <!-- VISTA: Inventario (se inyecta en #app-root) -->
+      <!-- VISTA: Inventario (Sección 7 · Gestión real de productos, costos, existencias y Kardex) -->
       <div class="view" data-view="inventario">
 
         <div class="page-header">
-          <h2>Catálogo de productos</h2>
+          <div>
+            <h2>Catálogo y control de existencias</h2>
+            <p class="text-muted" style="margin:.15rem 0 0; font-size:.86rem">Productos por unidad (u), metro lineal (m) y metro cuadrado (m²), con trazabilidad de movimientos</p>
+          </div>
           <div class="page-actions">
-            <!-- Abre el modal (#modal-producto) o, con JavaScript, <dialog>.showModal() -->
-            <a class="btn btn-primary" href="#modal-producto">+ Nuevo Producto</a>
+            <button type="button" class="btn btn-primary" id="btn-nuevo-producto">+ Nuevo Producto</button>
           </div>
         </div>
 
+        <div id="inv-feedback" class="alert alert-info hidden" role="status" style="margin-bottom:1rem"></div>
+
         <div class="toolbar">
-          <input class="input" type="search" id="buscar-inventario" placeholder="Buscar por nombre o código">
-          <label class="check"><input type="checkbox" id="solo-bajo"> Solo stock bajo</label>
+          <input class="input" type="search" id="buscar-inventario" placeholder="Buscar por nombre, código o descripción">
+          <select class="select" id="inv-filtro-categoria" style="width:auto" aria-label="Filtrar por categoría">
+            <option value="Todos">Todas las categorías</option>
+            <option value="Vidrios">Vidrios</option>
+            <option value="Perfiles">Perfiles</option>
+            <option value="Accesorios">Accesorios</option>
+            <option value="Insumos">Insumos</option>
+          </select>
+          <label class="check"><input type="checkbox" id="solo-bajo"> Solo stock bajo o agotado</label>
+          <label class="check"><input type="checkbox" id="mostrar-inactivos"> Mostrar inactivos</label>
         </div>
 
         <!-- Catálogo completo -->
         <section class="card">
           <div class="table-wrap">
             <table class="table" id="tabla-productos">
-              <thead><tr><th>Código</th><th>Producto</th><th>Categoría</th><th class="num">Precio</th><th class="num">Stock</th><th class="num">Mínimo</th><th>Estado</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Producto</th>
+                  <th>Categoría</th>
+                  <th class="num">Costo compra</th>
+                  <th class="num">Precio venta</th>
+                  <th class="num">Stock</th>
+                  <th class="num">Mínimo</th>
+                  <th>Estado</th>
+                  <th class="text-right">Acciones</th>
+                </tr>
+              </thead>
               <tbody>
-                <!-- Estados dinámicos: .stock-ok / .stock-low / .stock-out y filas .row-low / .row-out -->
-                <tr><td>VT-006</td><td>Vidrio templado 6 mm</td><td>Vidrios</td><td class="num">$ 85.000</td><td class="num">24</td><td class="num">10</td><td><span class="badge stock-ok">Disponible</span></td></tr>
-                <tr><td>VL-008</td><td>Vidrio laminado 8 mm</td><td>Vidrios</td><td class="num">$ 120.000</td><td class="num">12</td><td class="num">10</td><td><span class="badge stock-ok">Disponible</span></td></tr>
-                <tr class="row-low"><td>CV-001</td><td>Cerradura para vidrio</td><td>Accesorios</td><td class="num">$ 54.000</td><td class="num">3</td><td class="num">5</td><td><span class="badge stock-low">Stock bajo</span></td></tr>
-                <tr class="row-low"><td>PA-100</td><td>Perfil aluminio 1&quot;</td><td>Perfiles</td><td class="num">$ 28.500</td><td class="num">8</td><td class="num">10</td><td><span class="badge stock-low">Stock bajo</span></td></tr>
-                <tr class="row-out"><td>SI-050</td><td>Silicona estructural</td><td>Insumos</td><td class="num">$ 16.500</td><td class="num">0</td><td class="num">6</td><td><span class="badge stock-out">Agotado</span></td></tr>
-                <tr><td>RC-300</td><td>Riel corredizo 3 m</td><td>Perfiles</td><td class="num">$ 42.000</td><td class="num">35</td><td class="num">8</td><td><span class="badge stock-ok">Disponible</span></td></tr>
+                <tr><td colspan="9" class="text-muted" style="text-align:center; padding:1.5rem">No hay productos disponibles.</td></tr>
               </tbody>
             </table>
           </div>
         </section>
 
-        <!-- Formularios: entradas y salidas de mercancía -->
+        <!-- Formularios: entradas y salidas justificadas de mercancía -->
         <div class="grid grid-2" style="margin-top:1.25rem">
           <form class="card" id="form-entrada">
             <div class="card-header"><h3>Registrar entrada</h3><span class="badge badge-success">+ Stock</span></div>
             <div class="card-body form-grid">
-              <div class="field full"><label class="label" for="ent-producto">Producto</label>
-                <select class="select" id="ent-producto"><option>Vidrio templado 6 mm</option><option>Cerradura para vidrio</option><option>Silicona estructural</option></select></div>
-              <div class="field"><label class="label" for="ent-cantidad">Cantidad</label><input class="input" id="ent-cantidad" type="number" min="1" placeholder="0" required></div>
-              <div class="field"><label class="label" for="ent-motivo">Motivo</label><input class="input" id="ent-motivo" placeholder="Compra a proveedor"></div>
-              <div class="field full"><button type="submit" class="btn btn-primary">Registrar entrada</button></div>
+              <div class="field full">
+                <label class="label" for="ent-producto">Producto *</label>
+                <select class="select" id="ent-producto" required></select>
+              </div>
+              <div class="field">
+                <label class="label" for="ent-origen">Tipo de entrada *</label>
+                <select class="select" id="ent-origen">
+                  <option value="Entrada por compra">Entrada por compra a proveedor</option>
+                  <option value="Ajuste autorizado">Ajuste autorizado (+)</option>
+                  <option value="Corrección justificada">Corrección justificada (+)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label" for="ent-cantidad">Cantidad *</label>
+                <input class="input num" id="ent-cantidad" type="number" min="0.01" step="0.01" placeholder="0" required>
+              </div>
+              <div class="field full">
+                <label class="label" for="ent-motivo">Motivo / Factura o proveedor *</label>
+                <input class="input" id="ent-motivo" placeholder="Ej: Compra factura #412 Proveedor Vitral" required>
+              </div>
+              <div class="field full">
+                <label class="check">
+                  <input type="checkbox" id="ent-registrar-gasto">
+                  Registrar simultáneamente el gasto de esta compra en Contabilidad
+                </label>
+              </div>
+              <div class="field hidden" id="box-ent-metodo">
+                <label class="label" for="ent-metodo-pago">Método de pago de la compra</label>
+                <select class="select" id="ent-metodo-pago">
+                  <option value="Transferencia">Transferencia</option>
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Tarjeta débito">Tarjeta débito</option>
+                </select>
+              </div>
+              <div class="field hidden" id="box-ent-costo">
+                <label class="label" for="ent-costo-total">Costo total pagado (COP)</label>
+                <input class="input num" id="ent-costo-total" type="number" min="0" step="100" placeholder="Autocalculado según costo">
+              </div>
+              <div class="field full">
+                <button type="submit" class="btn btn-primary">Confirmar entrada</button>
+              </div>
             </div>
           </form>
 
           <form class="card" id="form-salida">
-            <div class="card-header"><h3>Registrar salida</h3><span class="badge badge-danger">− Stock</span></div>
+            <div class="card-header"><h3>Registrar salida / baja</h3><span class="badge badge-danger">− Stock</span></div>
             <div class="card-body form-grid">
-              <div class="field full"><label class="label" for="sal-producto">Producto</label>
-                <select class="select" id="sal-producto"><option>Vidrio templado 6 mm</option><option>Cerradura para vidrio</option><option>Silicona estructural</option></select></div>
-              <div class="field"><label class="label" for="sal-cantidad">Cantidad</label><input class="input" id="sal-cantidad" type="number" min="1" placeholder="0" required></div>
-              <div class="field"><label class="label" for="sal-motivo">Motivo</label><input class="input" id="sal-motivo" placeholder="Merma, ajuste, uso interno"></div>
-              <div class="field full"><button type="submit" class="btn btn-outline">Registrar salida</button></div>
+              <div class="field full">
+                <label class="label" for="sal-producto">Producto *</label>
+                <select class="select" id="sal-producto" required></select>
+              </div>
+              <div class="field">
+                <label class="label" for="sal-origen">Tipo de salida *</label>
+                <select class="select" id="sal-origen">
+                  <option value="Pérdida o daño">Pérdida o daño registrado (rotura/merma)</option>
+                  <option value="Ajuste autorizado">Ajuste autorizado (−)</option>
+                  <option value="Corrección justificada">Corrección justificada (−)</option>
+                  <option value="Uso interno en obra">Uso interno / instalación</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label" for="sal-cantidad">Cantidad *</label>
+                <input class="input num" id="sal-cantidad" type="number" min="0.01" step="0.01" placeholder="0" required>
+              </div>
+              <div class="field full">
+                <label class="label" for="sal-motivo">Motivo obligatorio *</label>
+                <input class="input" id="sal-motivo" placeholder="Ej: Lámina fisurada en descargue / ajuste de conteo físico" required>
+              </div>
+              <div class="field full">
+                <button type="submit" class="btn btn-outline">Confirmar salida</button>
+              </div>
             </div>
           </form>
         </div>
 
-        <!-- Modal: nuevo producto (overlay oscuro con z-index alto) -->
+        <!-- Historial de movimientos de inventario (Kardex) -->
+        <section class="card" style="margin-top:1.25rem">
+          <div class="card-header">
+            <h3>Historial de movimientos de inventario (Kardex)</h3>
+            <span class="badge" id="inv-kardex-count">0 movimientos</span>
+          </div>
+          <div class="table-wrap">
+            <table class="table" id="tabla-kardex-inventario">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Código</th>
+                  <th>Producto</th>
+                  <th>Tipo</th>
+                  <th>Origen</th>
+                  <th class="num">Cantidad</th>
+                  <th class="num">Stock ant.</th>
+                  <th class="num">Stock nuevo</th>
+                  <th>Motivo</th>
+                  <th>Responsable</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="10" class="text-muted" style="text-align:center; padding:1.5rem">No hay movimientos de inventario registrados.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Modal: crear o editar producto -->
         <div class="modal-overlay" id="modal-producto" role="dialog" aria-modal="true" aria-labelledby="titulo-producto">
           <div class="modal">
             <div class="modal-header"><h3 id="titulo-producto">Nuevo producto</h3><a class="modal-close" href="#" aria-label="Cerrar">×</a></div>
             <form id="form-producto">
+              <input type="hidden" id="prod-id" value="">
               <div class="modal-body form-grid">
-                <div class="field full"><label class="label" for="prod-nombre">Nombre</label><input class="input" id="prod-nombre" required></div>
-                <div class="field"><label class="label" for="prod-codigo">Código</label><input class="input" id="prod-codigo"></div>
-                <div class="field"><label class="label" for="prod-categoria">Categoría</label>
-                  <select class="select" id="prod-categoria"><option>Vidrios</option><option>Perfiles</option><option>Accesorios</option><option>Insumos</option></select></div>
-                <div class="field"><label class="label" for="prod-precio">Precio</label><input class="input" id="prod-precio" type="number" min="0" required></div>
-                <div class="field"><label class="label" for="prod-stock">Stock inicial</label><input class="input" id="prod-stock" type="number" min="0" value="0"></div>
-                <div class="field"><label class="label" for="prod-minimo">Stock mínimo</label><input class="input" id="prod-minimo" type="number" min="0" value="0"><span class="help">Se alertará al llegar a este nivel.</span></div>
+                <div class="field full">
+                  <label class="label" for="prod-nombre">Nombre del producto *</label>
+                  <input class="input" id="prod-nombre" required placeholder="Ej: Vidrio templado 10 mm">
+                </div>
+                <div class="field">
+                  <label class="label" for="prod-codigo">Código único *</label>
+                  <input class="input" id="prod-codigo" required placeholder="Ej: VT-010">
+                </div>
+                <div class="field">
+                  <label class="label" for="prod-categoria">Categoría *</label>
+                  <select class="select" id="prod-categoria">
+                    <option value="Vidrios">Vidrios</option>
+                    <option value="Perfiles">Perfiles</option>
+                    <option value="Accesorios">Accesorios</option>
+                    <option value="Insumos">Insumos</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="label" for="prod-unidad">Unidad de medida *</label>
+                  <select class="select" id="prod-unidad">
+                    <option value="m²">Metro cuadrado (m²)</option>
+                    <option value="m">Metro lineal (m)</option>
+                    <option value="u">Unidad (u)</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="label" for="prod-precio-compra">Precio de compra (COP)</label>
+                  <input class="input num" id="prod-precio-compra" type="number" min="0" step="100" value="0" required>
+                </div>
+                <div class="field">
+                  <label class="label" for="prod-precio">Precio de venta (COP) *</label>
+                  <input class="input num" id="prod-precio" type="number" min="0" step="100" required>
+                </div>
+                <div class="field" id="field-prod-stock-inicial">
+                  <label class="label" for="prod-stock">Stock inicial</label>
+                  <input class="input num" id="prod-stock" type="number" min="0" step="0.01" value="0">
+                </div>
+                <div class="field">
+                  <label class="label" for="prod-minimo">Stock mínimo de alerta</label>
+                  <input class="input num" id="prod-minimo" type="number" min="0" step="0.01" value="5">
+                  <span class="help">Se alertará cuando el stock llegue a este nivel.</span>
+                </div>
+                <div class="field full">
+                  <label class="label" for="prod-descripcion">Descripción opcional</label>
+                  <input class="input" id="prod-descripcion" placeholder="Especificación técnica, calibre, acabado">
+                </div>
+                <div class="field full">
+                  <div id="prod-error" class="alert alert-danger hidden"></div>
+                </div>
               </div>
-              <div class="modal-footer"><a class="btn btn-outline" href="#">Cancelar</a><button type="submit" class="btn btn-primary">Guardar producto</button></div>
+              <div class="modal-footer">
+                <a class="btn btn-outline" href="#">Cancelar</a>
+                <button type="submit" class="btn btn-primary" id="btn-guardar-producto">Guardar producto</button>
+              </div>
             </form>
           </div>
         </div>
       </div>
   </template>
   <template id="tpl-contabilidad">
-      <!-- VISTA: Contabilidad Básica (se inyecta en #app-root) -->
+      <!-- VISTA: Contabilidad Básica (Sección 8 · Ingresos, gastos, flujo efectivo vs. bancos y resultados) -->
       <div class="view" data-view="contabilidad">
 
+        <div id="cont-feedback" class="alert alert-info hidden" role="status" style="margin-bottom:1rem"></div>
+
         <div class="grid grid-3" style="margin-bottom:1.25rem">
-          <div class="card stat income"><div class="stat-label">Ingresos del mes</div><p class="stat-value num">$ 4.820.000</p><span class="stat-note">18 movimientos</span></div>
-          <div class="card stat expense"><div class="stat-label">Gastos del mes</div><p class="stat-value num">$ 2.135.000</p><span class="stat-note">11 movimientos</span></div>
-          <div class="card stat"><div class="stat-label">Balance</div><p class="stat-value num">$ 2.685.000</p><span class="stat-note">Ingresos − gastos</span></div>
+          <div class="card stat income">
+            <div class="stat-label">Ingresos registrados</div>
+            <p class="stat-value num" id="cont-kpi-ingresos">$ 0</p>
+            <span class="stat-note" id="cont-note-ingresos">0 movimientos · Efectivo: $ 0</span>
+          </div>
+          <div class="card stat expense">
+            <div class="stat-label">Gastos registrados</div>
+            <p class="stat-value num" id="cont-kpi-gastos">$ 0</p>
+            <span class="stat-note" id="cont-note-gastos">0 movimientos · Efectivo: $ 0</span>
+          </div>
+          <div class="card stat">
+            <div class="stat-label">Resultado del período (Ingresos − Gastos)</div>
+            <p class="stat-value num" id="cont-kpi-balance">$ 0</p>
+            <span class="stat-note" id="cont-note-balance">Flujo neto acumulado</span>
+          </div>
         </div>
 
         <!-- Panel superior: alternar entre registrar ingreso y gasto -->
@@ -1017,24 +1216,101 @@
             <div class="tab-panels">
               <form class="tab-panel" id="panel-ingreso">
                 <div class="form-grid">
-                  <div class="field"><label class="label" for="ing-concepto">Concepto</label><input class="input" id="ing-concepto" placeholder="Ej: Abono de cliente" required></div>
-                  <div class="field"><label class="label" for="ing-categoria">Categoría</label>
-                    <select class="select" id="ing-categoria"><option>Ventas</option><option>Abonos</option><option>Otros ingresos</option></select></div>
-                  <div class="field"><label class="label" for="ing-monto">Monto</label><input class="input" id="ing-monto" type="number" min="0" placeholder="0" required></div>
-                  <div class="field"><label class="label" for="ing-fecha">Fecha</label><input class="input" id="ing-fecha" type="date" required></div>
-                  <div class="field full"><label class="label" for="ing-nota">Nota</label><textarea class="textarea" id="ing-nota" rows="2" placeholder="Opcional"></textarea></div>
+                  <div class="field">
+                    <label class="label" for="ing-concepto">Concepto *</label>
+                    <input class="input" id="ing-concepto" placeholder="Ej: Anticipo instalación ventanal" required>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="ing-categoria">Categoría *</label>
+                    <select class="select" id="ing-categoria">
+                      <option value="Abonos">Abonos / Anticipos de clientes</option>
+                      <option value="Servicio de instalación">Servicio de instalación / corte</option>
+                      <option value="Otros ingresos">Otros ingresos autorizados</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="ing-monto">Valor (COP) *</label>
+                    <input class="input num" id="ing-monto" type="number" min="1" step="100" placeholder="0" required>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="ing-fecha">Fecha *</label>
+                    <input class="input" id="ing-fecha" type="date" required>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="ing-metodo">Método de pago *</label>
+                    <select class="select" id="ing-metodo">
+                      <option value="Efectivo">Efectivo</option>
+                      <option value="Transferencia">Transferencia</option>
+                      <option value="Tarjeta débito">Tarjeta débito</option>
+                      <option value="Tarjeta crédito">Tarjeta crédito</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="ing-soporte">Soporte documental / Comprobante</label>
+                    <input class="input" id="ing-soporte" placeholder="Ej: Recibo #108 / Ref. bancaria">
+                  </div>
+                  <div class="field full">
+                    <label class="check">
+                      <input type="checkbox" id="ing-afecta-caja">
+                      Ingresar este dinero en el efectivo físico de la caja abierta actual
+                    </label>
+                  </div>
+                  <div class="field full">
+                    <label class="label" for="ing-nota">Observaciones</label>
+                    <textarea class="textarea" id="ing-nota" rows="2" placeholder="Detalle adicional opcional"></textarea>
+                  </div>
                 </div>
                 <div style="margin-top:1rem"><button type="submit" class="btn btn-primary">Guardar ingreso</button></div>
               </form>
 
               <form class="tab-panel" id="panel-gasto">
                 <div class="form-grid">
-                  <div class="field"><label class="label" for="gas-concepto">Concepto</label><input class="input" id="gas-concepto" placeholder="Ej: Pago de arriendo" required></div>
-                  <div class="field"><label class="label" for="gas-categoria">Categoría</label>
-                    <select class="select" id="gas-categoria"><option>Servicios</option><option>Arriendo</option><option>Compra de mercancía</option><option>Nómina informal</option><option>Otros gastos</option></select></div>
-                  <div class="field"><label class="label" for="gas-monto">Monto</label><input class="input" id="gas-monto" type="number" min="0" placeholder="0" required></div>
-                  <div class="field"><label class="label" for="gas-fecha">Fecha</label><input class="input" id="gas-fecha" type="date" required></div>
-                  <div class="field full"><label class="label" for="gas-nota">Nota</label><textarea class="textarea" id="gas-nota" rows="2" placeholder="Opcional"></textarea></div>
+                  <div class="field">
+                    <label class="label" for="gas-concepto">Concepto *</label>
+                    <input class="input" id="gas-concepto" placeholder="Ej: Pago de energía del local" required>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="gas-categoria">Categoría *</label>
+                    <select class="select" id="gas-categoria">
+                      <option value="Servicios">Servicios públicos</option>
+                      <option value="Arriendo">Arriendo</option>
+                      <option value="Compra de mercancía">Compra de mercancía / materiales</option>
+                      <option value="Transporte y fletes">Transporte y fletes</option>
+                      <option value="Nómina y mano de obra">Nómina y mano de obra</option>
+                      <option value="Otros gastos">Otros gastos</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="gas-monto">Valor (COP) *</label>
+                    <input class="input num" id="gas-monto" type="number" min="1" step="100" placeholder="0" required>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="gas-fecha">Fecha *</label>
+                    <input class="input" id="gas-fecha" type="date" required>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="gas-metodo">Método de pago *</label>
+                    <select class="select" id="gas-metodo">
+                      <option value="Efectivo">Efectivo</option>
+                      <option value="Transferencia">Transferencia</option>
+                      <option value="Tarjeta débito">Tarjeta débito</option>
+                      <option value="Tarjeta crédito">Tarjeta crédito</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="gas-soporte">Soporte documental / Factura</label>
+                    <input class="input" id="gas-soporte" placeholder="Ej: Factura proveedor #8832">
+                  </div>
+                  <div class="field full">
+                    <label class="check">
+                      <input type="checkbox" id="gas-afecta-caja">
+                      Descontar este pago del efectivo físico de la caja abierta actual
+                    </label>
+                  </div>
+                  <div class="field full">
+                    <label class="label" for="gas-nota">Observaciones</label>
+                    <textarea class="textarea" id="gas-nota" rows="2" placeholder="Detalle adicional opcional"></textarea>
+                  </div>
                 </div>
                 <div style="margin-top:1rem"><button type="submit" class="btn btn-danger">Guardar gasto</button></div>
               </form>
@@ -1042,22 +1318,41 @@
           </div>
         </section>
 
-        <!-- Tabla central: historial de movimientos (overflow-x para móviles) -->
+        <!-- Tabla central: historial de movimientos -->
         <section class="card" style="margin-top:1.25rem">
           <div class="card-header">
-            <h3>Historial de movimientos</h3>
-            <select class="select" style="width:auto" aria-label="Filtrar por tipo"><option>Todos</option><option>Ingresos</option><option>Gastos</option></select>
+            <h3>Historial de movimientos financieros</h3>
+            <div style="display:flex; gap:.5rem; flex-wrap:wrap">
+              <select class="select" id="cont-filtro-tipo" style="width:auto" aria-label="Filtrar por tipo">
+                <option value="Todos">Todos los tipos</option>
+                <option value="Ingresos">Solo Ingresos</option>
+                <option value="Gastos">Solo Gastos</option>
+              </select>
+              <select class="select" id="cont-filtro-metodo" style="width:auto" aria-label="Filtrar por método">
+                <option value="Todos">Todos los métodos</option>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Tarjeta débito">Tarjeta débito</option>
+                <option value="Tarjeta crédito">Tarjeta crédito</option>
+              </select>
+            </div>
           </div>
           <div class="table-wrap">
             <table class="table" id="tabla-movimientos">
-              <thead><tr><th>Fecha</th><th>Tipo</th><th>Categoría</th><th>Concepto</th><th class="num">Monto</th><th>Registrado por</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Tipo</th>
+                  <th>Categoría</th>
+                  <th>Concepto</th>
+                  <th>Método / Caja</th>
+                  <th>Soporte</th>
+                  <th class="num">Monto</th>
+                  <th>Responsable</th>
+                </tr>
+              </thead>
               <tbody>
-                <!-- JavaScript asigna .text-income o .text-expense al monto según el tipo -->
-                <tr><td>29/10/2026</td><td><span class="badge badge-success">Ingreso</span></td><td>Ventas</td><td>Venta de contado #0045</td><td class="num text-income">+ $ 206.000</td><td>Administrador</td></tr>
-                <tr><td>28/10/2026</td><td><span class="badge badge-danger">Gasto</span></td><td>Servicios</td><td>Pago de energía</td><td class="num text-expense">− $ 180.000</td><td>Administrador</td></tr>
-                <tr><td>28/10/2026</td><td><span class="badge badge-success">Ingreso</span></td><td>Abonos</td><td>Abono cliente instalación ventanal</td><td class="num text-income">+ $ 500.000</td><td>Empleado</td></tr>
-                <tr><td>27/10/2026</td><td><span class="badge badge-danger">Gasto</span></td><td>Compra de mercancía</td><td>Perfiles de aluminio (proveedor)</td><td class="num text-expense">− $ 920.000</td><td>Administrador</td></tr>
-                <tr><td>26/10/2026</td><td><span class="badge badge-danger">Gasto</span></td><td>Arriendo</td><td>Arriendo del local</td><td class="num text-expense">− $ 800.000</td><td>Administrador</td></tr>
+                <tr><td colspan="8" class="text-muted" style="text-align:center; padding:1.5rem">No hay movimientos financieros registrados.</td></tr>
               </tbody>
             </table>
           </div>
@@ -1065,32 +1360,79 @@
       </div>
   </template>
   <template id="tpl-reportes">
-      <!-- VISTA: Consultas y Reportes · Análisis histórico por rango de fechas e impresión PDF -->
+      <!-- VISTA: Consultas y Reportes · Los 11 reportes obligatorios basados en datos reales (Sección 9) -->
       <div class="view" data-view="reportes">
 
-        <!-- Filtros de consulta y botón de impresión / PDF -->
+        <!-- Filtros completos de consulta, exportación CSV e impresión PDF -->
         <section class="card" style="margin-bottom:1.25rem">
-          <form class="card-body toolbar" id="form-filtro-reportes" style="margin:0">
-            <div class="field" style="min-width:10rem">
-              <label class="label" for="rep-desde">Desde</label>
-              <input class="input" id="rep-desde" type="date" value="2026-10-01">
+          <form class="card-body form-grid" id="form-filtro-reportes" style="margin:0; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr))">
+            <div class="field">
+              <label class="label" for="rep-desde">Fecha inicial</label>
+              <input class="input" id="rep-desde" type="date">
             </div>
-            <div class="field" style="min-width:10rem">
-              <label class="label" for="rep-hasta">Hasta</label>
-              <input class="input" id="rep-hasta" type="date" value="2026-10-29">
+            <div class="field">
+              <label class="label" for="rep-hasta">Fecha final</label>
+              <input class="input" id="rep-hasta" type="date">
             </div>
-            <div class="field" style="min-width:11rem">
-              <label class="label" for="rep-modulo">Módulo</label>
-              <select class="select" id="rep-modulo">
-                <option value="todos">Todos los módulos</option>
-                <option value="caja">Caja y Ventas</option>
-                <option value="contabilidad">Contabilidad Básica</option>
-                <option value="inventario">Inventario</option>
+            <div class="field">
+              <label class="label" for="rep-producto">Producto</label>
+              <select class="select" id="rep-producto">
+                <option value="Todos">Todos los productos</option>
               </select>
             </div>
-            <div class="page-actions" style="margin-left:auto; align-self:flex-end">
-              <button type="submit" class="btn btn-outline">Consultar</button>
-              <button type="button" class="btn btn-primary" id="btn-imprimir">Imprimir / Exportar PDF</button>
+            <div class="field">
+              <label class="label" for="rep-categoria">Categoría</label>
+              <select class="select" id="rep-categoria">
+                <option value="Todas">Todas las categorías</option>
+                <option value="Vidrios">Vidrios</option>
+                <option value="Perfiles">Perfiles</option>
+                <option value="Accesorios">Accesorios</option>
+                <option value="Insumos">Insumos</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="label" for="rep-metodo">Método de pago</label>
+              <select class="select" id="rep-metodo">
+                <option value="Todos">Todos</option>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Tarjeta débito">Tarjeta débito</option>
+                <option value="Tarjeta crédito">Tarjeta crédito</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="label" for="rep-estado">Estado de venta</label>
+              <select class="select" id="rep-estado">
+                <option value="Todos">Todos</option>
+                <option value="Completada">Completada</option>
+                <option value="Devuelta">Devuelta</option>
+                <option value="Anulada">Anulada</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="label" for="rep-usuario">Usuario responsable</label>
+              <input class="input" id="rep-usuario" placeholder="Todos">
+            </div>
+            <div class="field">
+              <label class="label" for="rep-csv-tipo">Reporte a exportar (CSV)</label>
+              <select class="select" id="rep-csv-tipo">
+                <option value="ventas_periodo">1. Ventas por período</option>
+                <option value="detalle_ventas">2. Detalle de ventas</option>
+                <option value="mas_vendidos">3. Productos más vendidos</option>
+                <option value="inventario_actual">4. Inventario actual</option>
+                <option value="stock_bajo">5. Productos con stock bajo</option>
+                <option value="movimientos_inventario">6. Movimientos de inventario</option>
+                <option value="ingresos_gastos">7. Ingresos y gastos</option>
+                <option value="metodos_pago">8. Métodos de pago</option>
+                <option value="cierres_caja">9. Cierres de caja</option>
+                <option value="diferencias_efectivo">10. Diferencias de efectivo</option>
+                <option value="anulaciones_devoluciones">11. Anulaciones y devoluciones</option>
+              </select>
+            </div>
+            <div class="field full" style="display:flex; justify-content:flex-end; gap:.5rem; flex-wrap:wrap">
+              <button type="submit" class="btn btn-outline">Aplicar filtros</button>
+              <button type="button" class="btn btn-outline" id="btn-exportar-csv">Exportar CSV</button>
+              <button type="button" class="btn btn-primary" id="btn-imprimir">Imprimir / PDF</button>
             </div>
           </form>
         </section>
@@ -1098,42 +1440,39 @@
         <!-- Totales consolidados del periodo consultado -->
         <div class="grid grid-4" style="margin-bottom:1.25rem">
           <article class="kpi">
-            <div class="kpi-label">Ventas del periodo</div>
-            <p class="kpi-value num" id="rep-total-ventas">$ 14.320.000</p>
-            <p class="kpi-note">146 ventas registradas</p>
+            <div class="kpi-label">Ventas efectivas del período</div>
+            <p class="kpi-value num" id="rep-total-ventas">$ 0</p>
+            <p class="kpi-note" id="rep-note-ventas">0 ventas efectivas</p>
           </article>
           <article class="kpi">
-            <div class="kpi-label">Otros ingresos</div>
-            <p class="kpi-value num text-income" id="rep-total-ingresos">$ 4.820.000</p>
-            <p class="kpi-note">18 registros contables</p>
+            <div class="kpi-label">Ingresos registrados</div>
+            <p class="kpi-value num text-income" id="rep-total-ingresos">$ 0</p>
+            <p class="kpi-note" id="rep-note-ingresos">0 registros contables</p>
           </article>
           <article class="kpi">
-            <div class="kpi-label">Gastos operativos</div>
-            <p class="kpi-value num text-expense" id="rep-total-gastos">$ 2.135.000</p>
-            <p class="kpi-note">11 registros contables</p>
+            <div class="kpi-label">Gastos registrados</div>
+            <p class="kpi-value num text-expense" id="rep-total-gastos">$ 0</p>
+            <p class="kpi-note" id="rep-note-gastos">0 registros contables</p>
           </article>
           <article class="kpi">
             <div class="kpi-label">Valorizado en bodega</div>
-            <p class="kpi-value num" id="rep-valor-bodega">$ 18.450.000</p>
-            <p class="kpi-note">128 productos a precio de venta</p>
+            <p class="kpi-value num" id="rep-valor-bodega">$ 0</p>
+            <p class="kpi-note" id="rep-note-bodega">0 productos activos</p>
           </article>
         </div>
 
-        <!-- Tablas de auditoría y consulta histórica -->
-        <div class="grid grid-2">
+        <!-- 1 y 3. Ventas por período y Productos más vendidos -->
+        <div class="grid grid-2" style="margin-bottom:1.25rem">
           <section class="card">
             <div class="card-header">
-              <h3>Historial de cierres de caja</h3>
-              <span class="badge">Últimos 4 cierres</span>
+              <h3>1. Ventas por período</h3>
+              <span class="badge">Agrupado por día</span>
             </div>
             <div class="table-wrap">
               <table class="table">
-                <thead><tr><th>Fecha</th><th>Cajero</th><th class="num">Esperado</th><th class="num">Contado</th><th class="num">Diferencia</th></tr></thead>
-                <tbody id="rep-tabla-cierres">
-                  <tr><td>28/10/2026</td><td>Administrador</td><td class="num">$ 910.000</td><td class="num">$ 910.000</td><td class="num text-income">$ 0</td></tr>
-                  <tr><td>27/10/2026</td><td>Empleado de caja</td><td class="num">$ 745.000</td><td class="num">$ 740.000</td><td class="num text-expense">− $ 5.000</td></tr>
-                  <tr><td>26/10/2026</td><td>Administrador</td><td class="num">$ 1.020.000</td><td class="num">$ 1.020.000</td><td class="num text-income">$ 0</td></tr>
-                  <tr><td>25/10/2026</td><td>Empleado de caja</td><td class="num">$ 680.000</td><td class="num">$ 680.000</td><td class="num text-income">$ 0</td></tr>
+                <thead><tr><th>Fecha</th><th class="num">Ventas</th><th class="num">Descuentos</th><th class="num">Total vendido</th></tr></thead>
+                <tbody id="rep-tabla-ventas-periodo">
+                  <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">No hay ventas registradas en el período seleccionado.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -1141,62 +1480,255 @@
 
           <section class="card">
             <div class="card-header">
-              <h3>Resumen por categoría contable</h3>
-              <span class="badge">Octubre 2026</span>
+              <h3>3. Productos más vendidos</h3>
+              <span class="badge">Ranking comercial</span>
+            </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Producto</th><th>Categoría</th><th class="num">Cantidad</th><th class="num">Total vendido</th></tr></thead>
+                <tbody id="rep-tabla-mas-vendidos">
+                  <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">No hay productos vendidos en el período.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- 2. Detalle de ventas -->
+        <section class="card" style="margin-bottom:1.25rem">
+          <div class="card-header">
+            <h3>2. Detalle de líneas de venta</h3>
+            <span class="badge" id="rep-detalle-count">0 líneas</span>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th>Venta</th><th>Fecha</th><th>Cliente</th><th>Producto / Medidas</th><th class="num">Cant.</th><th class="num">Subtotal</th><th>Estado</th></tr></thead>
+              <tbody id="rep-tabla-detalle-ventas">
+                <tr><td colspan="7" class="text-muted" style="text-align:center; padding:1.25rem">No hay detalle de ventas para mostrar.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 4 y 5. Inventario actual y Productos con stock bajo -->
+        <div class="grid grid-2" style="margin-bottom:1.25rem">
+          <section class="card">
+            <div class="card-header">
+              <h3>4. Inventario actual valorizado</h3>
+              <span class="badge" id="rep-inv-count">0 productos</span>
+            </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Código</th><th>Producto</th><th class="num">Stock</th><th class="num">Precio venta</th><th class="num">Valor total</th></tr></thead>
+                <tbody id="rep-tabla-inventario">
+                  <tr><td colspan="5" class="text-muted" style="text-align:center; padding:1.25rem">No hay productos registrados.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header">
+              <h3>5. Productos con stock bajo o agotados</h3>
+              <span class="badge badge-warning" id="rep-bajo-count">0 alertas</span>
+            </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Código</th><th>Producto</th><th class="num">Stock</th><th class="num">Mínimo</th><th>Estado</th></tr></thead>
+                <tbody id="rep-tabla-stock-bajo">
+                  <tr><td colspan="5" class="text-muted" style="text-align:center; padding:1.25rem">No hay productos con stock bajo o agotado.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- 7 y 8. Ingresos/Gastos por categoría y Métodos de pago -->
+        <div class="grid grid-2" style="margin-bottom:1.25rem">
+          <section class="card">
+            <div class="card-header">
+              <h3>7. Ingresos y gastos por categoría</h3>
+              <span class="badge">Contabilidad</span>
             </div>
             <div class="table-wrap">
               <table class="table">
                 <thead><tr><th>Categoría</th><th>Tipo</th><th class="num">Movimientos</th><th class="num">Total</th></tr></thead>
                 <tbody id="rep-tabla-categorias">
-                  <tr><td>Ventas mostrador</td><td><span class="badge badge-success">Ingreso</span></td><td class="num">12</td><td class="num text-income">+ $ 3.420.000</td></tr>
-                  <tr><td>Abonos de clientes</td><td><span class="badge badge-success">Ingreso</span></td><td class="num">6</td><td class="num text-income">+ $ 1.400.000</td></tr>
-                  <tr><td>Compra de mercancía</td><td><span class="badge badge-danger">Gasto</span></td><td class="num">4</td><td class="num text-expense">− $ 920.000</td></tr>
-                  <tr><td>Arriendo del local</td><td><span class="badge badge-danger">Gasto</span></td><td class="num">1</td><td class="num text-expense">− $ 800.000</td></tr>
-                  <tr><td>Servicios públicos</td><td><span class="badge badge-danger">Gasto</span></td><td class="num">6</td><td class="num text-expense">− $ 415.000</td></tr>
+                  <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">No hay movimientos contables en el período.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header">
+              <h3>8. Distribución por método de pago</h3>
+              <span class="badge">Ventas efectivas</span>
+            </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Método de pago</th><th class="num">Operaciones</th><th class="num">Total recibido</th><th class="num">%</th></tr></thead>
+                <tbody id="rep-tabla-metodos">
+                  <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">Sin pagos registrados en el período.</td></tr>
                 </tbody>
               </table>
             </div>
           </section>
         </div>
 
+        <!-- 9, 10 y 11. Cierres de caja, Diferencias de efectivo y Anulaciones/Devoluciones -->
+        <div class="grid grid-2" style="margin-bottom:1.25rem">
+          <section class="card">
+            <div class="card-header">
+              <h3>9 y 10. Historial de cierres de caja y diferencias</h3>
+              <span class="badge" id="rep-cierres-count">0 cierres</span>
+            </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Fecha</th><th>Cajero</th><th class="num">Esperado</th><th class="num">Contado</th><th class="num">Diferencia</th></tr></thead>
+                <tbody id="rep-tabla-cierres">
+                  <tr><td colspan="5" class="text-muted" style="text-align:center; padding:1.25rem">No hay cierres de caja registrados.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header">
+              <h3>11. Anulaciones y devoluciones</h3>
+              <span class="badge" id="rep-anulaciones-count">0 registros</span>
+            </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Tipo</th><th>Venta</th><th>Fecha</th><th class="num">Monto</th><th>Motivo / Responsable</th></tr></thead>
+                <tbody id="rep-tabla-anulaciones">
+                  <tr><td colspan="5" class="text-muted" style="text-align:center; padding:1.25rem">No hay anulaciones ni devoluciones en el período.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- 6. Movimientos de inventario (Kardex) -->
+        <section class="card">
+          <div class="card-header">
+            <h3>6. Movimientos de inventario del período</h3>
+            <span class="badge" id="rep-mov-inv-count">0 movimientos</span>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th>Fecha</th><th>Producto</th><th>Tipo / Origen</th><th class="num">Cantidad</th><th class="num">Saldo stock</th><th>Motivo</th><th>Usuario</th></tr></thead>
+              <tbody id="rep-tabla-mov-inventario">
+                <tr><td colspan="7" class="text-muted" style="text-align:center; padding:1.25rem">No hay movimientos de inventario en el período.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
       </div>
   </template>
   <template id="tpl-usuarios">
-      <!-- VISTA: Usuarios y Seguridad (solo administradores) -->
+      <!-- VISTA: Usuarios y Seguridad (Sección 10 · Control de roles, activación y auditoría) -->
       <div class="view" data-view="usuarios">
         <div class="page-header">
-          <h2>Usuarios del sistema</h2>
-          <div class="page-actions"><a class="btn btn-primary" href="#modal-usuario">+ Nuevo usuario</a></div>
+          <div>
+            <h2>Usuarios y control de acceso</h2>
+            <p class="text-muted" style="margin:.15rem 0 0; font-size:.86rem">Gestión de perfiles autorizados, asignación de roles y bitácora de auditoría</p>
+          </div>
+          <div class="page-actions">
+            <button type="button" class="btn btn-primary" id="btn-nuevo-usuario">+ Nuevo usuario</button>
+          </div>
         </div>
+
+        <div id="usr-feedback" class="alert alert-info hidden" role="status" style="margin-bottom:1rem"></div>
 
         <section class="card">
           <div class="table-wrap">
             <table class="table" id="tabla-usuarios">
-              <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Correo electrónico</th>
+                  <th>Rol asignado</th>
+                  <th>Estado</th>
+                  <th class="text-right">Acciones</th>
+                </tr>
+              </thead>
               <tbody>
-                <tr><td>Administrador</td><td>admin@elcarmen.com</td><td><span class="badge">Administrador</span></td><td><span class="badge badge-success">Activo</span></td><td class="text-right"><a href="#">Editar</a></td></tr>
-                <tr><td>Empleado de caja</td><td>caja@elcarmen.com</td><td><span class="badge badge-warning">Empleado</span></td><td><span class="badge badge-success">Activo</span></td><td class="text-right"><a href="#">Editar</a></td></tr>
-                <tr><td>Empleado bodega</td><td>bodega@elcarmen.com</td><td><span class="badge badge-warning">Empleado</span></td><td><span class="badge badge-danger">Inactivo</span></td><td class="text-right"><a href="#">Editar</a></td></tr>
+                <tr><td colspan="5" class="text-muted" style="text-align:center; padding:1.5rem">No hay usuarios registrados.</td></tr>
               </tbody>
             </table>
           </div>
         </section>
 
         <div class="alert alert-info" style="margin-top:1.25rem">
-          <b>Roles:</b> el Administrador accede a todos los módulos y gestiona usuarios; el Empleado solo a Caja, Inventario y Contabilidad.
+          <b>Seguridad y roles (Firebase Authentication):</b> las contraseñas nunca se almacenan en documentos de Firestore.
+          Roles disponibles: <b>Administrador</b> (acceso total), <b>Cajero</b> (apertura/cierre de caja y ventas), <b>Inventario</b> (productos y bodega) y <b>Contabilidad</b> (ingresos, gastos y reportes).
         </div>
 
+        <!-- Bitácora de actividad relevante y auditoría -->
+        <section class="card" style="margin-top:1.25rem">
+          <div class="card-header">
+            <h3>Actividad relevante del sistema (Auditoría)</h3>
+            <span class="badge" id="usr-auditoria-count">0 eventos</span>
+          </div>
+          <div class="table-wrap">
+            <table class="table" id="tabla-auditoria">
+              <thead>
+                <tr>
+                  <th>Fecha y hora</th>
+                  <th>Operación</th>
+                  <th>Usuario</th>
+                  <th>Detalle de trazabilidad</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.5rem">No hay eventos de auditoría registrados.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Modal: crear o editar usuario -->
         <div class="modal-overlay" id="modal-usuario" role="dialog" aria-modal="true" aria-labelledby="titulo-usuario">
           <div class="modal">
-            <div class="modal-header"><h3 id="titulo-usuario">Nuevo usuario</h3><a class="modal-close" href="#" aria-label="Cerrar">×</a></div>
+            <div class="modal-header"><h3 id="titulo-usuario">Nuevo usuario autorizado</h3><a class="modal-close" href="#" aria-label="Cerrar">×</a></div>
             <form id="form-usuario">
+              <input type="hidden" id="usr-id" value="">
               <div class="modal-body form-grid">
-                <div class="field full"><label class="label" for="usr-nombre">Nombre</label><input class="input" id="usr-nombre" required></div>
-                <div class="field full"><label class="label" for="usr-correo">Correo electrónico</label><input class="input" id="usr-correo" type="email" required></div>
-                <div class="field"><label class="label" for="usr-rol">Rol</label><select class="select" id="usr-rol"><option>Empleado</option><option>Administrador</option></select></div>
-                <div class="field"><label class="label" for="usr-clave">Contraseña temporal</label><input class="input" id="usr-clave" type="password" minlength="6" required></div>
+                <div class="field full">
+                  <label class="label" for="usr-nombre">Nombre completo *</label>
+                  <input class="input" id="usr-nombre" required placeholder="Ej: Laura Gómez">
+                </div>
+                <div class="field full">
+                  <label class="label" for="usr-correo">Correo electrónico *</label>
+                  <input class="input" id="usr-correo" type="email" required placeholder="usuario@elcarmen.com">
+                </div>
+                <div class="field">
+                  <label class="label" for="usr-rol">Rol del sistema *</label>
+                  <select class="select" id="usr-rol">
+                    <option value="Cajero">Cajero</option>
+                    <option value="Inventario">Inventario</option>
+                    <option value="Contabilidad">Contabilidad</option>
+                    <option value="Empleado">Empleado general</option>
+                    <option value="Administrador">Administrador</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="label" for="usr-estado">Estado de la cuenta</label>
+                  <select class="select" id="usr-estado">
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo (acceso bloqueado)</option>
+                  </select>
+                </div>
+                <div class="field full">
+                  <div id="usr-error" class="alert alert-danger hidden"></div>
+                </div>
               </div>
-              <div class="modal-footer"><a class="btn btn-outline" href="#">Cancelar</a><button type="submit" class="btn btn-primary">Crear usuario</button></div>
+              <div class="modal-footer">
+                <a class="btn btn-outline" href="#">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Guardar usuario</button>
+              </div>
             </form>
           </div>
         </div>

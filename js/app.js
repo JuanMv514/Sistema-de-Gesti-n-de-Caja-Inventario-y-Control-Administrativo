@@ -1,7 +1,8 @@
 // Controlador principal del SPA:
 // - Alterna entre #login-view y #dashboard-view sin recargar la página.
-// - Registra los controladores de vistas (Dashboard, Caja y Ventas, Inventario, Contabilidad, Reportes).
-// - Gestiona roles, permisos de ruta, modales e impresión.
+// - Registra los controladores reactivos de los 6 módulos (Dashboard, Caja y Ventas, Inventario,
+//   Contabilidad, Reportes y Usuarios).
+// - Gestiona autenticación, permisos de ruta, aviso de estado de Firebase, modales e impresión.
 
 import {
   navigateTo,
@@ -10,14 +11,17 @@ import {
   registerView,
   DEFAULT_ROUTE
 } from "./router.js";
-import { getCurrentUser, setCurrentUser, ROLES, hasPermission } from "./auth.js";
+import { getCurrentUser, setCurrentUser, hasPermission } from "./auth.js";
+import { getFirebaseStatus } from "./firebase-config.js";
 import { ensureSeedData } from "./services/store.js";
+import { autenticarUsuario, cerrarSesionUsuario } from "./services/usuarios-service.js";
 import { mountCajaView } from "./views/caja-view.js";
 import {
   mountInventarioView,
   mountContabilidadView,
   mountDashboardView,
-  mountReportesView
+  mountReportesView,
+  mountUsuariosView
 } from "./views/other-views.js";
 
 // Registrar los controladores reactivos de cada módulo en el router
@@ -26,6 +30,7 @@ registerView("caja", mountCajaView);
 registerView("inventario", mountInventarioView);
 registerView("contabilidad", mountContabilidadView);
 registerView("reportes", mountReportesView);
+registerView("usuarios", mountUsuariosView);
 
 const loginView = document.getElementById("login-view");
 const dashboardView = document.getElementById("dashboard-view");
@@ -37,6 +42,17 @@ function hasActiveSession() {
   } catch {
     return false;
   }
+}
+
+export function renderFirebaseConnectionBadge() {
+  const badge = document.getElementById("firebase-status-badge");
+  if (!badge) return;
+  const status = getFirebaseStatus();
+  badge.textContent = status.connected
+    ? `Firebase activo (${status.projectId})`
+    : "Modo local · Firebase pendiente";
+  badge.className = `badge ${status.connected ? "badge-success" : "badge-warning"}`;
+  badge.title = status.message;
 }
 
 export function showLoginView() {
@@ -58,15 +74,29 @@ export async function showDashboardView(user, initialRoute) {
 
   const nameEl = document.getElementById("user-name");
   const roleEl = document.getElementById("user-role");
+  const avatarEl = document.getElementById("user-avatar");
   if (user && nameEl) nameEl.textContent = user.name;
   if (user && roleEl) roleEl.textContent = `Rol: ${user.role}`;
+  if (user && avatarEl) {
+    avatarEl.textContent = String(user.name || "US")
+      .split(" ")
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase();
+  }
 
-  // Ocultar módulos exclusivos de Administrador si el usuario es Empleado
+  // Ocultar módulos exclusivos de Administrador si el usuario no tiene permiso
   document.querySelectorAll("[data-role='admin']").forEach((el) => {
     el.classList.toggle("hidden", !hasPermission("usuarios.gestionar", user));
   });
 
-  const target = initialRoute || getRouteFromLocation() || DEFAULT_ROUTE;
+  renderFirebaseConnectionBadge();
+
+  let target = initialRoute || getRouteFromLocation() || DEFAULT_ROUTE;
+  if (target === "usuarios" && !hasPermission("usuarios.gestionar", user)) {
+    target = DEFAULT_ROUTE;
+  }
   await navigateTo(target, { replace: true });
 }
 
@@ -78,18 +108,14 @@ function setupEventDelegation() {
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const email = (loginForm.email?.value || "admin@elcarmen.com").trim().toLowerCase();
-      const isEmpleado = email.startsWith("empleado") || email.startsWith("caja") || email.startsWith("bodega");
-      const role = isEmpleado ? ROLES.EMPLEADO : ROLES.ADMIN;
-      const rawName = email.split("@")[0] || "Administrador";
-      const user = {
-        uid: `usr-${rawName}`,
-        email,
-        name: rawName.charAt(0).toUpperCase() + rawName.slice(1),
-        role
-      };
-      setCurrentUser(user);
-      await showDashboardView(user, DEFAULT_ROUTE);
+      try {
+        const email = loginForm.email?.value || "admin@elcarmen.com";
+        const password = loginForm.password?.value || "123456";
+        const user = await autenticarUsuario({ email, password });
+        await showDashboardView(user, DEFAULT_ROUTE);
+      } catch (err) {
+        alert(err.message);
+      }
     });
   }
 
@@ -111,7 +137,7 @@ function setupEventDelegation() {
 
     if (link.classList.contains("logout")) {
       e.preventDefault();
-      setCurrentUser(null);
+      await cerrarSesionUsuario();
       showLoginView();
       return;
     }
@@ -142,6 +168,10 @@ function setupEventDelegation() {
     const routeKey = link.dataset.route || resolveRouteKey(href);
     if (routeKey) {
       e.preventDefault();
+      const user = getCurrentUser();
+      if (routeKey === "usuarios" && !hasPermission("usuarios.gestionar", user)) {
+        return;
+      }
       closeAllModals();
       await navigateTo(routeKey);
     }
@@ -160,6 +190,7 @@ function setupEventDelegation() {
 function initApp() {
   ensureSeedData();
   setupEventDelegation();
+  renderFirebaseConnectionBadge();
 
   if (loginView && dashboardView) {
     const hasRouteHash = window.location.hash.startsWith("#/");
