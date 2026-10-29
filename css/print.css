@@ -1,0 +1,34 @@
+/* ==========================================================================
+   Impresión / exportar a PDF (principalmente Consultas y Reportes)
+   Se enlaza con media="print" o se incluye con @media print.
+   ========================================================================== */
+@media print {
+  @page { size: A4; margin: 14mm; }
+
+  body { background: #fff; color: #000; font-size: 11pt; }
+
+  /* Ocultar elementos de navegación e interacción */
+  .sidebar, .nav-backdrop, .topbar .menu-btn, .topbar .collapse-btn, .topbar-date,
+  .footer, .page-actions, .btn, .no-print, .modal-overlay { display: none !important; }
+
+  .main { margin: 0 !important; }
+  .topbar { position: static; padding: 0 0 .5rem; border-bottom: 2px solid #000; background: none; }
+  #app-root { padding: 0; max-width: none; }
+
+  /* Conservar colores de fondo en tablas y tarjetas */
+  .table th, .kpi, .badge, .stat {
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+
+  .card, .kpi, .stat { box-shadow: none; break-inside: avoid; page-break-inside: avoid; }
+  .grid { gap: .6rem; }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .table-wrap { overflow: visible; }
+  .table { font-size: 10pt; }
+  .table tr { break-inside: avoid; }
+  .section-title { break-after: avoid; }
+  a { color: inherit; text-decoration: none; }
+}
+

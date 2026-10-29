@@ -7,10 +7,13 @@
   <link rel="stylesheet" href="../css/base.css">
   <link rel="stylesheet" href="../css/layout.css">
   <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/modules.css">
+  <link rel="stylesheet" href="../css/print.css" media="print">
 </head>
 <body>
 <div class="app">
   <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Abrir menú">
+  <input type="checkbox" id="sidebar-collapse" class="nav-toggle" aria-label="Colapsar menú">
 
   <aside class="sidebar">
     <div class="brand">
@@ -20,31 +23,35 @@
     <nav class="nav" aria-label="Principal">
       <p class="nav-title">Módulos</p>
       <ul class="nav-list">
-        <li><a class="nav-link active" href="caja.html">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>Caja y Ventas</a></li>
-        <li><a class="nav-link" href="inventario.html">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg>Inventario</a></li>
-        <li><a class="nav-link" href="contabilidad.html">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Contabilidad</a></li>
-        <li><a class="nav-link" href="reportes.html">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>Reportes</a></li>
-        <li><a class="nav-link" href="usuarios.html">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>Usuarios</a></li>
+        <li><a class="nav-link active" href="caja.html" title="Caja y Ventas">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg><span class="nav-text">Caja y Ventas</span></a></li>
+        <li><a class="nav-link" href="inventario.html" title="Inventario">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg><span class="nav-text">Inventario</span></a></li>
+        <li><a class="nav-link" href="contabilidad.html" title="Contabilidad">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="nav-text">Contabilidad</span></a></li>
+        <li><a class="nav-link" href="reportes.html" title="Reportes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg><span class="nav-text">Reportes</span></a></li>
+        <li data-role="admin"><a class="nav-link" href="usuarios.html" title="Usuarios">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg><span class="nav-text">Usuarios</span></a></li>
       </ul>
     </nav>
     <div class="sidebar-footer">
       <div class="avatar">AD</div>
-      <div class="user-meta"><strong>Administrador</strong><span>Rol: Administrador</span></div>
+      <div class="user-meta"><strong id="user-name">Administrador</strong><span id="user-role">Rol: Administrador</span></div>
       <a class="logout" href="../index.html" title="Cerrar sesión" aria-label="Cerrar sesión">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
       </a>
     </div>
   </aside>
+  <label for="nav-toggle" class="nav-backdrop" aria-hidden="true"></label>
 
   <div class="main">
     <header class="topbar">
-      <label for="nav-toggle" class="menu-btn" aria-label="Menú">
+      <label for="nav-toggle" class="menu-btn" aria-label="Abrir menú">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </label>
+      <label for="sidebar-collapse" class="collapse-btn" aria-label="Colapsar o expandir menú" title="Colapsar / expandir menú">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
       </label>
       <div class="topbar-title">
         <h1>Caja y Ventas</h1>
@@ -54,11 +61,131 @@
     </header>
 
     <main id="app-root">
-      <div class="card">
-        <div class="empty">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
-          <h3>Módulo en diseño</h3>
-          <p>Aquí irá el diseño de Caja y Ventas cuando definamos sus requisitos.</p>
+      <!-- VISTA: Caja y Ventas (se inyecta en #app-root) -->
+      <div class="view" data-view="caja">
+
+        <!-- Estado de la caja -->
+        <section class="card cash-status">
+          <span class="badge badge-success">Caja abierta</span>
+          <div class="grow meta">
+            <span>Abierta por: <b>Administrador</b></span>
+            <span>Monto inicial: <b class="num">$ 200.000</b></span>
+            <span>Ventas del turno: <b>12</b></span>
+          </div>
+          <a class="btn btn-outline" href="#modal-cierre">Cerrar caja</a>
+        </section>
+
+        <div class="pos">
+          <!-- Columna 1: catálogo interactivo -->
+          <section aria-label="Catálogo de productos">
+            <div class="toolbar">
+              <input class="input" type="search" id="buscar-producto" placeholder="Buscar producto por nombre o código">
+            </div>
+            <div class="chips">
+              <button type="button" class="chip active">Todos</button>
+              <button type="button" class="chip">Vidrios</button>
+              <button type="button" class="chip">Perfiles</button>
+              <button type="button" class="chip">Accesorios</button>
+              <button type="button" class="chip">Insumos</button>
+            </div>
+
+            <!-- Cuadrícula de productos: JavaScript generará estas tarjetas desde Firestore -->
+            <div class="product-grid" id="product-grid">
+              <button type="button" class="product-card"><div class="product-thumb">VT</div><span class="product-name">Vidrio templado 6 mm</span><span class="product-meta">Stock: 24 m²</span><span class="product-price num">$ 85.000</span></button>
+              <button type="button" class="product-card"><div class="product-thumb">VL</div><span class="product-name">Vidrio laminado 8 mm</span><span class="product-meta">Stock: 12 m²</span><span class="product-price num">$ 120.000</span></button>
+              <button type="button" class="product-card"><div class="product-thumb">ES</div><span class="product-name">Espejo 4 mm</span><span class="product-meta">Stock: 18 m²</span><span class="product-price num">$ 65.000</span></button>
+              <button type="button" class="product-card"><div class="product-thumb">PA</div><span class="product-name">Perfil aluminio 1&quot;</span><span class="product-meta">Stock: 60 u</span><span class="product-price num">$ 28.500</span></button>
+              <button type="button" class="product-card"><div class="product-thumb">RC</div><span class="product-name">Riel corredizo 3 m</span><span class="product-meta">Stock: 35 u</span><span class="product-price num">$ 42.000</span></button>
+              <button type="button" class="product-card"><div class="product-thumb">BH</div><span class="product-name">Bisagra hidráulica</span><span class="product-meta">Stock: 40 u</span><span class="product-price num">$ 18.000</span></button>
+              <button type="button" class="product-card"><div class="product-thumb">CV</div><span class="product-name">Cerradura para vidrio</span><span class="product-meta">Stock: 3 u</span><span class="product-price num">$ 54.000</span></button>
+              <button type="button" class="product-card" disabled><div class="product-thumb">SI</div><span class="product-name">Silicona estructural</span><span class="product-meta">Agotado</span><span class="product-price num">$ 16.500</span></button>
+            </div>
+          </section>
+
+          <!-- Columna 2: carrito de compra (Punto de Venta) -->
+          <aside class="card cart" aria-label="Carrito de compra">
+            <div class="card-header">
+              <h3>Venta actual</h3>
+              <button type="button" class="btn btn-outline" id="btn-vaciar">Vaciar</button>
+            </div>
+
+            <!-- JavaScript inyectará aquí un <li> por producto seleccionado -->
+            <ul class="cart-list" id="cart-items">
+              <li class="cart-item">
+                <span class="name">Vidrio templado 6 mm<br><span class="unit num">$ 85.000 c/u</span></span>
+                <span class="sub num">$ 170.000</span>
+                <span class="qty"><button type="button" aria-label="Quitar uno">−</button><span>2</span><button type="button" aria-label="Agregar uno">+</button></span>
+                <span></span>
+              </li>
+              <li class="cart-item">
+                <span class="name">Bisagra hidráulica<br><span class="unit num">$ 18.000 c/u</span></span>
+                <span class="sub num">$ 36.000</span>
+                <span class="qty"><button type="button" aria-label="Quitar uno">−</button><span>2</span><button type="button" aria-label="Agregar uno">+</button></span>
+                <span></span>
+              </li>
+            </ul>
+            <!-- Se muestra (quitando .hidden) cuando el carrito está vacío -->
+            <p class="cart-empty hidden" id="cart-empty">El carrito está vacío. Selecciona productos del catálogo.</p>
+
+            <div class="cart-footer">
+              <div class="summary">
+                <div class="summary-row"><span>Subtotal</span><span class="num" id="cart-subtotal">$ 206.000</span></div>
+                <div class="summary-row total"><span>Total</span><span class="num" id="cart-total">$ 206.000</span></div>
+              </div>
+              <div class="form-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 1rem;">
+                <div class="field">
+                  <label class="label" for="metodo-pago">Método de pago</label>
+                  <select class="select" id="metodo-pago">
+                    <option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="label" for="recibido">Valor recibido</label>
+                  <input class="input" id="recibido" type="number" min="0" placeholder="0">
+                </div>
+              </div>
+              <div class="summary"><div class="summary-row"><span>Cambio</span><b class="num" id="cart-cambio">$ 0</b></div></div>
+              <!-- Con el carrito vacío JavaScript añade el atributo disabled -->
+              <button type="button" class="btn btn-primary btn-block" id="btn-cobrar">Cobrar venta</button>
+              <button type="button" class="btn btn-primary btn-block" style="margin-top:.6rem" disabled>Cobrar venta (estado deshabilitado)</button>
+            </div>
+          </aside>
+        </div>
+
+        <!-- Modal oculto: cierre de caja (se abre con #modal-cierre o añadiendo .is-open) -->
+        <div class="modal-overlay" id="modal-cierre" role="dialog" aria-modal="true" aria-labelledby="titulo-cierre">
+          <div class="modal">
+            <div class="modal-header"><h3 id="titulo-cierre">Cierre de caja</h3><a class="modal-close" href="#" aria-label="Cerrar">×</a></div>
+            <form id="form-cierre">
+              <div class="modal-body">
+                <div class="summary">
+                  <div class="summary-row"><span>Monto inicial</span><span class="num">$ 200.000</span></div>
+                  <div class="summary-row"><span>Ventas en efectivo</span><span class="num">$ 640.000</span></div>
+                  <div class="summary-row"><span>Ventas por transferencia</span><span class="num">$ 310.000</span></div>
+                  <div class="summary-row"><span>Ventas con tarjeta</span><span class="num">$ 150.000</span></div>
+                  <div class="summary-row total"><span>Efectivo esperado</span><span class="num">$ 840.000</span></div>
+                </div>
+                <div class="form-grid">
+                  <div class="field">
+                    <label class="label" for="efectivo-contado">Efectivo contado</label>
+                    <input class="input" id="efectivo-contado" type="number" min="0" placeholder="0" required>
+                  </div>
+                  <div class="field">
+                    <label class="label">Diferencia</label>
+                    <div class="input num" style="background:var(--navy-50)">$ 0</div>
+                  </div>
+                  <div class="field full">
+                    <label class="label" for="obs-cierre">Observaciones</label>
+                    <textarea class="textarea" id="obs-cierre" rows="2" placeholder="Opcional"></textarea>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <a class="btn btn-outline" href="#">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Confirmar cierre</button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </main>
@@ -66,5 +193,6 @@
     <footer class="footer">© 2026 Vidrios y Aluminios El Carmen · AIMÁTIKA</footer>
   </div>
 </div>
+
 </body>
 </html>
