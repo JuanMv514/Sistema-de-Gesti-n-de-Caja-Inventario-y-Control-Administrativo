@@ -59,7 +59,12 @@
 .stat.income  { border-left-color: var(--success); }
 .stat.expense { border-left-color: var(--danger); }
 
-/* ---------- Inventario ---------- */
+/* ---------- Inventario (pestañas Entrada / Salida en modal) ---------- */
+#mov-entrada:checked ~ .tab-panels #panel-entrada,
+#mov-salida:checked ~ .tab-panels #panel-salida { display: block; }
+#mov-entrada:checked ~ .tabs label[for="mov-entrada"],
+#mov-salida:checked ~ .tabs label[for="mov-salida"] { background: var(--navy-800); color: var(--white); }
+
 .stock-ok  { background: var(--success-bg); color: var(--success); }
 .stock-low { background: var(--warning-bg); color: var(--warning); }
 .stock-out { background: var(--danger-bg);  color: var(--danger); }
@@ -68,44 +73,28 @@
 .row-low { background: #fffaf0; }
 .row-out { background: #fff6f7; }
 
-/* ---------- Consultas y Reportes ---------- */
-.section-title { display: flex; align-items: center; gap: .6rem; margin: 1.75rem 0 .75rem; font-size: 1.05rem; text-transform: uppercase; letter-spacing: .06em; color: var(--navy-800); }
-.section-title::after { content: ""; flex: 1; height: 2px; background: var(--navy-100); }
-.kpi { padding: 1.25rem; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); border-top: 4px solid var(--navy-800); }
-.kpi-label { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
-.kpi-value { margin: .3rem 0 0; font-size: 2rem; font-weight: 800; color: var(--navy-900); line-height: 1.1; font-variant-numeric: tabular-nums; }
-.kpi-note { margin: .25rem 0 0; font-size: .8rem; color: var(--text-muted); }
-.kpi.alert-kpi { border-top-color: var(--warning); }
-.kpi.alert-kpi .kpi-value { color: var(--warning); }
-
-@media (max-width: 1100px) {
-  .pos { grid-template-columns: 1fr; }
-  .cart { position: static; max-height: none; }
-}
-
-
-/* ---------- Dashboard principal ---------- */
+/* ---------- Consultas y Reportes (Dashboard unificado) ---------- */
 .dash-hero {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem;
-  padding: 1.5rem 1.75rem; margin-bottom: 1.5rem;
+  padding: 1.35rem 1.6rem; margin-bottom: 1.5rem;
   border-radius: var(--radius); color: var(--white);
   background:
     radial-gradient(circle at 85% 20%, rgba(45, 91, 184, .55), transparent 45%),
     linear-gradient(135deg, var(--navy-900), var(--navy-700));
   box-shadow: var(--shadow-md);
 }
-.dash-hero h2 { margin: 0 0 .2rem; color: var(--white); font-size: 1.35rem; }
-.dash-hero p { margin: 0; font-size: .88rem; color: rgba(255, 255, 255, .78); }
-.dash-quick { display: flex; flex-wrap: wrap; gap: .6rem; }
-.btn-hero {
-  background: var(--white); color: var(--navy-900); font-weight: 600;
-  border-color: var(--white);
+.dash-hero h2 { margin: 0 0 .2rem; color: var(--white); font-size: 1.3rem; }
+.dash-hero p { margin: 0; font-size: .86rem; color: rgba(255, 255, 255, .78); }
+.dash-quick { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+.dash-select {
+  padding: .55rem .8rem; border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, .14); color: var(--white);
+  border: 1px solid rgba(255, 255, 255, .3); font-weight: 600; font-size: .88rem;
 }
+.dash-select option { color: var(--navy-900); background: var(--white); }
+.btn-hero { background: var(--white); color: var(--navy-900); font-weight: 600; border-color: var(--white); }
 .btn-hero:hover { background: var(--navy-50); }
-.btn-hero-ghost {
-  background: rgba(255, 255, 255, .12); color: var(--white);
-  border-color: rgba(255, 255, 255, .28);
-}
+.btn-hero-ghost { background: rgba(255, 255, 255, .12); color: var(--white); border-color: rgba(255, 255, 255, .28); }
 .btn-hero-ghost:hover { background: rgba(255, 255, 255, .2); }
 
 .dash-pillars { display: grid; gap: 1.25rem; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 1.5rem; }
@@ -150,5 +139,7 @@
 .pillar-foot a { font-weight: 600; color: var(--navy-800); }
 
 @media (max-width: 1100px) {
+  .pos { grid-template-columns: 1fr; }
+  .cart { position: static; max-height: none; }
   .dash-pillars { grid-template-columns: 1fr; }
 }
