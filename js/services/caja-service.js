@@ -328,6 +328,8 @@ export async function registrarVenta(
     impuesto = 0,
     clienteId = "cli-consumidor",
     ordenReferencia = "",
+    anticipoPrevio = 0,
+    esVentaCredito = false,
     idempotencyKey = null
   },
   user = getCurrentUser()
@@ -470,26 +472,71 @@ export async function registrarVenta(
         throw new Error("El total de la venta debe ser mayor que cero.");
       }
 
-      // 4. Normalizar y validar pagos (pago único o pagos divididos)
-      const listaPagos =
-        Array.isArray(pagos) && pagos.length > 0
-          ? pagos
-          : [
-              {
-                metodo: metodoPago || "Efectivo",
-                importe:
-                  (metodoPago || "Efectivo") === "Efectivo"
-                    ? roundCOP(valorRecibido ?? 0)
-                    : calculo.total,
-                referencia: referenciaPago
-              }
-            ];
+      // Verificar si existe un anticipo previo aplicable para no duplicar el ingreso al completar la venta
+      const ordenRefLimpia = String(ordenReferencia || "").trim();
+      let anticipoReconocido = roundCOP(anticipoPrevio || 0);
+      if (anticipoReconocido === 0 && ordenRefLimpia) {
+        const movsPrevios = tx.getAll(COLLECTIONS.MOV_CONTABLES);
+        anticipoReconocido = movsPrevios
+          .filter(
+            (m) =>
+              !m.anulado &&
+              m.estado !== "Revertido" &&
+              m.tipo === TIPOS_CONTABLE.INGRESO &&
+              (m.categoria === "Anticipos de clientes" || m.categoria === "Abonos") &&
+              String(m.pedidoRelacionado || "").trim().toLowerCase() === ordenRefLimpia.toLowerCase() &&
+              !m.aplicadoEnVentaId
+          )
+          .reduce((acc, m) => acc + roundCOP(m.monto), 0);
+      }
 
-      const evalPago = evaluarPagos({ total: calculo.total, pagos: listaPagos });
-      if (!evalPago.completo) {
-        throw new Error(
-          `El valor recibido no cubre el total de la venta. Faltan $ ${evalPago.faltante.toLocaleString("es-CO")}.`
-        );
+      if (anticipoReconocido < 0 || anticipoReconocido > calculo.total) {
+        throw new Error("El anticipo previo no puede ser negativo ni superar el total de la venta.");
+      }
+
+      const montoExigibleEnCobro = roundCOP(calculo.total - anticipoReconocido);
+
+      // 4. Normalizar y validar pagos (pago único, pagos divididos o venta a crédito)
+      let evalPago = {
+        pagos: [],
+        totalRecibido: 0,
+        efectivoRecibido: 0,
+        otrosMetodos: 0,
+        efectivoNetoCaja: 0,
+        cambio: 0,
+        faltante: 0,
+        completo: true
+      };
+      let saldoPendiente = 0;
+
+      if (esVentaCredito && (!Array.isArray(pagos) || pagos.length === 0) && !valorRecibido) {
+        // Venta 100% a crédito: no entra dinero en efectivo ni en bancos en este momento (Sección 7)
+        saldoPendiente = montoExigibleEnCobro;
+      } else if (montoExigibleEnCobro > 0) {
+        const listaPagos =
+          Array.isArray(pagos) && pagos.length > 0
+            ? pagos
+            : [
+                {
+                  metodo: metodoPago || "Efectivo",
+                  importe:
+                    (metodoPago || "Efectivo") === "Efectivo"
+                      ? roundCOP(valorRecibido ?? 0)
+                      : montoExigibleEnCobro,
+                  referencia: referenciaPago
+                }
+              ];
+
+        evalPago = evaluarPagos({ total: montoExigibleEnCobro, pagos: listaPagos });
+        if (!evalPago.completo) {
+          if (esVentaCredito) {
+            saldoPendiente = evalPago.faltante;
+          } else {
+            throw new Error(
+              `El valor recibido no cubre el total de la venta. Faltan $ ${evalPago.faltante.toLocaleString("es-CO")}.`
+            );
+          }
+        }
       }
 
       // 5. Resolver cliente asociado (por defecto Consumidor Final)
@@ -533,9 +580,15 @@ export async function registrarVenta(
 
       // 7. Insertar documento de venta
       const metodoResumen =
-        evalPago.pagos.length === 1
-          ? evalPago.pagos[0].metodo
-          : `Mixto (${evalPago.pagos.map((p) => p.metodo).join(" + ")})`;
+        evalPago.pagos.length === 0
+          ? saldoPendiente > 0
+            ? "Crédito"
+            : "Anticipo aplicado"
+          : evalPago.pagos.length === 1
+            ? evalPago.pagos[0].metodo
+            : `Mixto (${evalPago.pagos.map((p) => p.metodo).join(" + ")})`;
+
+      const importePagadoEnTurno = roundCOP(montoExigibleEnCobro - saldoPendiente);
 
       const ventaDoc = tx.insert(COLLECTIONS.VENTAS, {
         numero: numeroVenta,
@@ -546,39 +599,75 @@ export async function registrarVenta(
           nombre: cliente.nombre,
           documento: cliente.documento
         },
-        ordenReferencia: String(ordenReferencia || "").trim(),
+        ordenReferencia: ordenRefLimpia,
         items: calculo.lineas,
         subtotal: calculo.subtotal,
         descuento: calculo.descuento,
         impuesto: calculo.impuesto,
         total: calculo.total,
+        anticipoAplicado: anticipoReconocido,
+        importePagado: roundCOP(anticipoReconocido + importePagadoEnTurno),
+        saldoPendiente,
         metodoPago: metodoResumen,
         pagos: evalPago.pagos,
         valorRecibido: evalPago.totalRecibido,
         efectivoNetoCaja: evalPago.efectivoNetoCaja,
         cambio: evalPago.cambio,
-        saldoPendiente: 0,
         vendedor: user.name || user.email,
         vendedorUid: user.uid || user.email,
         fecha: ahora,
         idempotencyKey
       });
 
-      // 8. Registrar el movimiento en Contabilidad Básica (distinguiendo ingreso por ventas)
-      tx.insert(COLLECTIONS.MOV_CONTABLES, {
-        tipo: TIPOS_CONTABLE.INGRESO,
-        categoria: "Ventas mostrador",
-        concepto: `Venta ${numeroVenta} · ${cliente.nombre}`,
-        monto: calculo.total,
-        metodoPago: metodoResumen,
-        afectaCajaFisica: evalPago.efectivoNetoCaja > 0,
-        cajaId: caja.id,
-        origen: "Venta POS",
-        referenciaId: ventaDoc.id,
-        numeroVenta,
-        usuario: user.name || user.email,
-        fecha: ahora
-      });
+      // Si se aplicaron anticipos previos de este pedido, vincularlos a la venta para no volver a aplicarlos
+      if (anticipoReconocido > 0 && ordenRefLimpia) {
+        const movsPrevios = tx.getAll(COLLECTIONS.MOV_CONTABLES);
+        for (const m of movsPrevios) {
+          if (
+            !m.anulado &&
+            m.estado !== "Revertido" &&
+            m.tipo === TIPOS_CONTABLE.INGRESO &&
+            (m.categoria === "Anticipos de clientes" || m.categoria === "Abonos") &&
+            String(m.pedidoRelacionado || "").trim().toLowerCase() === ordenRefLimpia.toLowerCase() &&
+            !m.aplicadoEnVentaId
+          ) {
+            tx.update(COLLECTIONS.MOV_CONTABLES, m.id, {
+              aplicadoEnVentaId: ventaDoc.id,
+              numeroVentaAsociada: numeroVenta,
+              saldoPendientePedido: saldoPendiente
+            });
+          }
+        }
+      }
+
+      // 8. Registrar en Contabilidad Básica únicamente los pagos efectivamente recibidos en este cobro,
+      // desglosando cada método cuando hay pagos divididos y sin duplicar anticipos ni ventas a crédito (Sección 7).
+      for (const pago of evalPago.pagos) {
+        const montoPagoNeto = roundCOP(pago.importeNeto ?? pago.importe ?? 0);
+        if (montoPagoNeto <= 0) continue;
+
+        tx.insert(COLLECTIONS.MOV_CONTABLES, {
+          tipo: TIPOS_CONTABLE.INGRESO,
+          categoria: "Ventas de mostrador",
+          concepto: `Venta ${numeroVenta} · ${cliente.nombre}${evalPago.pagos.length > 1 ? ` (${pago.metodo})` : ""}`,
+          monto: montoPagoNeto,
+          valor: montoPagoNeto,
+          metodoPago: pago.metodo,
+          afectaCajaFisica: pago.metodo === "Efectivo",
+          cajaId: pago.metodo === "Efectivo" ? caja.id : null,
+          origen: "Venta POS",
+          referenciaId: ventaDoc.id,
+          referencia: pago.referencia || numeroVenta,
+          numeroVenta,
+          clienteRelacionado: cliente.nombre,
+          pedidoRelacionado: ordenRefLimpia,
+          estado: "Confirmado",
+          usuario: user.name || user.email,
+          fechaEfectiva: ahora.slice(0, 10),
+          fechaRegistro: ahora,
+          fecha: ahora
+        });
+      }
 
       if (calculo.descuento > 0) {
         tx.insert(COLLECTIONS.AUDITORIA, {
@@ -673,18 +762,38 @@ export async function anularVenta(
       }
     });
 
-    // Registrar el ajuste contable inverso
+    // Marcar los movimientos contables originales de esta venta como Revertidos (conservando su historial)
+    const movsContables = tx.getAll(COLLECTIONS.MOV_CONTABLES);
+    for (const m of movsContables) {
+      if (m.referenciaId === venta.id || m.numeroVenta === venta.numero) {
+        tx.update(COLLECTIONS.MOV_CONTABLES, m.id, {
+          anulado: true,
+          estado: "Revertido",
+          motivoReversion: `Anulación de venta ${venta.numero}: ${motivoLimpio}`,
+          revertidoPor: user.name || user.email,
+          fechaReversion: ahora
+        });
+      }
+    }
+
+    // Registrar también el asiento de ajuste auditable sin inflar gastos operativos
     tx.insert(COLLECTIONS.MOV_CONTABLES, {
-      tipo: TIPOS_CONTABLE.GASTO,
+      tipo: "Reversión",
       categoria: "Anulación / Devolución de venta",
-      concepto: `Anulación ${venta.numero} · ${motivoLimpio}`,
+      concepto: `Reversión por anulación ${venta.numero} · ${motivoLimpio}`,
       monto: venta.total,
+      valor: venta.total,
       metodoPago: venta.metodoPago,
       afectaCajaFisica: venta.efectivoNetoCaja > 0,
       cajaId: cajaAfectadaId,
       origen: "Anulación POS",
       referenciaId: venta.id,
+      referencia: venta.numero,
+      estado: "Ajuste aplicado",
+      anulado: true,
       usuario: user.name || user.email,
+      fechaEfectiva: ahora.slice(0, 10),
+      fechaRegistro: ahora,
       fecha: ahora
     });
 
