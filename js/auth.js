@@ -18,6 +18,7 @@ const ROLE_PERMISSIONS = {
     "ventas.registrar",
     "ventas.consultar",
     "ventas.descuento",
+    "ventas.modificar_precio",
     "ventas.anular",
     "ventas.devolucion",
     "clientes.crear",
@@ -73,3 +74,4 @@ export function assertPermission(permission, user = getCurrentUser()) {
     throw new Error(`No tienes permisos para realizar esta acción (${permission}). Requiere autorización de Administrador.`);
   }
 }
+

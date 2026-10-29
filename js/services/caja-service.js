@@ -19,7 +19,8 @@ import { getCurrentUser, assertPermission, hasPermission } from "../auth.js";
 import {
   roundQty,
   roundCOP,
-  validarCantidadPorUnidad
+  validarCantidadPorUnidad,
+  calcularVidrioPersonalizado
 } from "./inventario-service.js";
 import { TIPOS_CONTABLE } from "./contabilidad-service.js";
 
@@ -180,15 +181,56 @@ export async function registrarMovimientoEfectivoCaja(
 // 2. CÁLCULOS DE LÍNEAS, SUBTOTAL, DESCUENTOS, IMPUESTOS Y TOTAL (Secciones 5 y 6)
 // ---------------------------------------------------------------------------
 export function calcularLineaVenta(item) {
-  const precioUnitario = roundCOP(item.precioUnitario ?? item.precio);
+  const prodInv = item.productoId ? getDocById(COLLECTIONS.PRODUCTOS, item.productoId) : null;
+  const precioBase = item.precioUnitario ?? item.precio ?? item.dimensiones?.precioM2 ?? prodInv?.precio ?? 0;
+
+  // Si la línea es un vidrio/espejo por medidas personalizadas, recalcular a partir de sus dimensiones
+  if (item.dimensiones && item.dimensiones.ancho && (item.dimensiones.largo || item.dimensiones.altoCm)) {
+    const d = item.dimensiones;
+    const calc = calcularVidrioPersonalizado({
+      ancho: d.ancho ?? d.anchoCm,
+      largo: d.largo ?? d.largoCm ?? d.altoCm,
+      unidadDimension: d.unidadDimension || (d.anchoCm ? "cm" : "m"),
+      piezas: d.piezas ?? 1,
+      precioM2: precioBase,
+      costosAdicionales: item.costosAdicionales ?? d.costosAdicionales ?? 0,
+      conceptoAdicional: item.conceptoAdicional ?? d.conceptoAdicional ?? ""
+    });
+    return {
+      ...item,
+      precioUnitario: calc.precioM2,
+      cantidad: calc.areaTotal,
+      precioMaterial: calc.precioMaterial,
+      costosAdicionales: calc.costosAdicionales,
+      conceptoAdicional: calc.conceptoAdicional,
+      dimensiones: {
+        ancho: calc.ancho,
+        largo: calc.largo,
+        unidadDimension: calc.unidadDimension,
+        anchoM: calc.anchoM,
+        largoM: calc.largoM,
+        piezas: calc.piezas,
+        areaPorPieza: calc.areaPorPieza,
+        areaTotal: calc.areaTotal
+      },
+      subtotal: calc.precioFinalLinea
+    };
+  }
+
+  const precioUnitario = roundCOP(precioBase);
   const cantidad = roundQty(item.cantidad);
+  const costosAdicionales = roundCOP(item.costosAdicionales || 0);
   if (!(cantidad > 0)) throw new Error("La cantidad de cada línea debe ser mayor que cero.");
   if (!(precioUnitario >= 0)) throw new Error("El precio unitario no puede ser negativo.");
-  const subtotal = roundCOP(precioUnitario * cantidad);
+  if (costosAdicionales < 0) throw new Error("Los costos adicionales no pueden ser negativos.");
+  const precioMaterial = roundCOP(precioUnitario * cantidad);
+  const subtotal = roundCOP(precioMaterial + costosAdicionales);
   return {
     ...item,
     precioUnitario,
     cantidad,
+    precioMaterial,
+    costosAdicionales,
     subtotal
   };
 }
@@ -339,7 +381,60 @@ export async function registrarVenta(
           throw new Error(`El producto "${item.nombre || item.productoId}" no existe o no está disponible.`);
         }
 
-        const cantidad = validarCantidadPorUnidad(prod, item.cantidad);
+        // Determinar precio por unidad / m²: usa el del inventario salvo que un usuario con permiso explícito lo haya modificado
+        let precioAplicado = roundCOP(prod.precio);
+        if (item.precioUnitario !== undefined && roundCOP(item.precioUnitario) !== roundCOP(prod.precio)) {
+          if (item.precioAutorizado) {
+            assertPermission("ventas.modificar_precio", user);
+            if (!(roundCOP(item.precioUnitario) > 0)) {
+              throw new Error("El precio autorizado debe ser mayor que cero.");
+            }
+            precioAplicado = roundCOP(item.precioUnitario);
+          } else {
+            throw new Error("El producto fue actualizado. Verifica el precio y las existencias.");
+          }
+        }
+
+        let cantidad = 0;
+        let dimensionesGuardadas = null;
+        let precioMaterial = 0;
+        let costosAdicionales = roundCOP(item.costosAdicionales || 0);
+        let conceptoAdicional = String(item.conceptoAdicional || "").trim();
+        let subtotalLinea = 0;
+
+        if (item.dimensiones && item.dimensiones.ancho && (item.dimensiones.largo || item.dimensiones.altoCm)) {
+          const d = item.dimensiones;
+          const calcVidrio = calcularVidrioPersonalizado({
+            ancho: d.ancho ?? d.anchoCm,
+            largo: d.largo ?? d.largoCm ?? d.altoCm,
+            unidadDimension: d.unidadDimension || (d.anchoCm ? "cm" : "m"),
+            piezas: d.piezas ?? 1,
+            precioM2: precioAplicado,
+            costosAdicionales,
+            conceptoAdicional
+          });
+          cantidad = calcVidrio.areaTotal;
+          precioMaterial = calcVidrio.precioMaterial;
+          costosAdicionales = calcVidrio.costosAdicionales;
+          conceptoAdicional = calcVidrio.conceptoAdicional;
+          subtotalLinea = calcVidrio.precioFinalLinea;
+          dimensionesGuardadas = {
+            ancho: calcVidrio.ancho,
+            largo: calcVidrio.largo,
+            unidadDimension: calcVidrio.unidadDimension,
+            anchoM: calcVidrio.anchoM,
+            largoM: calcVidrio.largoM,
+            piezas: calcVidrio.piezas,
+            areaPorPieza: calcVidrio.areaPorPieza,
+            areaTotal: calcVidrio.areaTotal
+          };
+        } else {
+          cantidad = validarCantidadPorUnidad(prod, item.cantidad);
+          if (costosAdicionales < 0) throw new Error("Los costos adicionales no pueden ser negativos.");
+          precioMaterial = roundCOP(precioAplicado * cantidad);
+          subtotalLinea = roundCOP(precioMaterial + costosAdicionales);
+        }
+
         const previa = acumuladoPorProducto.get(prod.id) || 0;
         const totalSolicitado = roundQty(previa + cantidad);
 
@@ -350,22 +445,22 @@ export async function registrarVenta(
         }
         acumuladoPorProducto.set(prod.id, totalSolicitado);
 
-        // Si el precio enviado por la vista difiere del precio vigente en base de datos, alertar
-        if (item.precioUnitario !== undefined && roundCOP(item.precioUnitario) !== roundCOP(prod.precio)) {
-          throw new Error("El producto fue actualizado. Verifica el precio y las existencias.");
-        }
-
         lineasValidadas.push({
           productoId: prod.id,
           codigo: prod.codigo,
           nombre: prod.nombre,
           categoria: prod.categoria,
           unidad: prod.unidad,
-          esPersonalizado: Boolean(prod.esPersonalizado || item.dimensiones),
-          dimensiones: item.dimensiones || null,
-          precioUnitario: roundCOP(prod.precio),
+          esPersonalizado: Boolean(prod.esPersonalizado || dimensionesGuardadas),
+          dimensiones: dimensionesGuardadas,
+          precioInventario: roundCOP(prod.precio),
+          precioUnitario: precioAplicado,
+          precioAutorizado: Boolean(item.precioAutorizado && precioAplicado !== roundCOP(prod.precio)),
           cantidad,
-          subtotal: roundCOP(prod.precio * cantidad)
+          precioMaterial,
+          costosAdicionales,
+          conceptoAdicional,
+          subtotal: subtotalLinea
         });
       }
 
@@ -928,3 +1023,4 @@ export function generarDatosComprobante(venta) {
     saldoPendiente: venta.saldoPendiente || 0
   };
 }
+
