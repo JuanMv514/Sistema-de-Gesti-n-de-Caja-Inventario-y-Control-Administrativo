@@ -1,24 +1,76 @@
-# Sistema de Gestión de Caja, Inventario y Control Administrativo
+#Sistema Administrativo - Vidrios y Aluminios El Carmen
 
-## Descripción del Proyecto
-Este repositorio contiene el código fuente de una aplicación web diseñada para centralizar, automatizar y optimizar la administración diaria de un negocio. El sistema provee una solución integral que conecta directamente las operaciones de punto de venta con el control de inventario y la contabilidad interna, eliminando la necesidad de llevar registros manuales dispersos.
+Aplicación web administrativa (Single Page Application - SPA) diseñada a medida para la gestión y control interno del negocio Vidrios y Aluminios El Carmen. El sistema permite centralizar las operaciones de ventas, control de inventario y contabilidad básica desde una interfaz rápida, segura y accesible en la nube.
 
-## Lo que se espera lograr
-El objetivo principal del proyecto es entregar una herramienta de gestión eficiente y segura que permita a los administradores tener un control total sobre su negocio. Específicamente, el sistema busca:
-*   **Automatizar las ventas:** Agilizar el registro de transacciones, la selección de métodos de pago y el cierre de caja diario.
-*   **Sincronizar el inventario:** Descontar automáticamente las existencias al realizar una venta y facilitar el registro de nuevas entradas (compras a proveedores).
-*   **Proteger la información:** Restringir el acceso a módulos sensibles financieros y administrativos mediante un sistema de autenticación basado en roles de usuario.
-*   **Facilitar el análisis financiero:** Proporcionar un panel de control (Dashboard) y reportes detallados que consoliden ventas, ingresos extraordinarios y gastos.
-*   **Ofrecer inteligencia de negocio:** Analizar periódicamente el flujo de datos para generar recomendaciones automáticas sobre productos de alta rotación y alertas de gastos inusuales.
+🚀 Arquitectura y Tecnologías
 
-## Cómo se va a lograr (Arquitectura y Metodología)
-Para alcanzar estos objetivos, el proyecto se desarrollará bajo una arquitectura Full-Stack apoyada en metodologías ágiles, garantizando escalabilidad y transacciones seguras:
+El proyecto está construido bajo una arquitectura Serverless y SPA puro, eliminando la necesidad de un backend tradicional. Toda la lógica de enrutamiento, protección de vistas y conexión a bases de datos se gestiona directamente en el cliente.
 
-### 1. Arquitectura Técnica
-*   **Interfaz de Usuario (Frontend):** Se construirá un cliente web responsivo e interactivo utilizando HTML5, CSS y JavaScript (manipulación del DOM). Esta capa estará diseñada para consumirse desde cualquier dispositivo con acceso a internet y se alojará en servicios de nube para sitios estáticos.
-*   **Lógica de Servidor (Backend):** Toda la lógica de negocio y las validaciones de seguridad residirán en una API RESTful desarrollada en Java utilizando el framework Spring Boot. Esto protegerá las credenciales y procesará las transacciones de manera centralizada.
-*   **Persistencia de Datos (Base de Datos):** Para garantizar que operaciones conjuntas (como registrar una venta y descontar stock simultáneamente) no presenten inconsistencias, se utilizará un motor de base de datos relacional (PostgreSQL o MySQL). La comunicación con la base de datos se realizará mediante mapeo objeto-relacional (ORM) usando JPA e Hibernate.
+Frontend: HTML5, CSS3 (Tailwind CSS) y Vanilla JavaScript.
 
-### 2. Flujo de Trabajo
-*   **Metodología Ágil:** El alcance del sistema se ha dividido en módulos independientes (Caja, Inventario, Usuarios, Movimientos, Dashboard, Reportes y Análisis). El desarrollo se ejecutará iterativamente planificando Sprints y resolviendo requerimientos funcionales documentados como Historias de Usuario.
-*   **Control de Versiones:** Se utilizará Git para gestionar el código fuente. Cada funcionalidad o historia de usuario se desarrollará en una rama secuencial independiente (feature branches) antes de ser integrada al código principal, asegurando un entorno de colaboración limpio y estable.
+Backend as a Service (BaaS): Firebase (Authentication & Cloud Firestore).
+
+Hosting: Netlify.
+
+📦 Módulos Principales
+
+1. Caja y Ventas
+
+Interfaz de Punto de Venta (POS) para el registro rápido de productos.
+
+Gestión de métodos de pago y cálculo automático de totales.
+
+Control de apertura y cierre de caja.
+
+2. Inventario
+
+Catálogo de productos en tiempo real.
+
+Control de existencias, precios y alertas de stock bajo.
+
+Registro de movimientos operativos (entradas y salidas).
+
+3. Contabilidad Básica
+
+Registro y categorización de ingresos y gastos operativos.
+
+Historial de movimientos administrativos.
+
+Nota: Este módulo es de control interno y no reemplaza un software contable fiscal.
+
+4. Consultas y Reportes
+
+Dashboard interactivo con métricas clave del negocio.
+
+Resúmenes en tiempo real cruzando datos de ventas, gastos e inventario.
+
+5. Usuarios y Seguridad
+
+Autenticación segura respaldada por Firebase Auth.
+
+Control de acceso basado en roles (Administrador, Empleado).
+
+Guardianes de ruta (Route Guards) mediante JavaScript para proteger las vistas internas.
+
+🛠️ Estructura del SPA
+
+El sistema se carga en un único archivo index.html. La navegación inyecta las plantillas de forma dinámica en un contenedor principal (#app-root) interceptando los eventos del historial del navegador.
+
+Sin recargas: Transiciones fluidas entre módulos.
+
+Reactividad: Uso de onSnapshot de Firestore para actualizar el inventario y los reportes en las pantallas de todos los usuarios conectados sin necesidad de refrescar la página.
+
+⚙️ Instalación y Configuración Local
+
+Clona este repositorio:
+
+git clone https://github.com/tu-usuario/vidrios-el-carmen-app.git
+
+
+Configura las variables de entorno:
+Crea un archivo de configuración para inicializar Firebase con las credenciales del proyecto (ApiKey, AuthDomain, ProjectId, etc.).
+
+Despliegue local:
+Al ser HTML/JS puro, puedes utilizar extensiones como Live Server en VSCode o cualquier servidor HTTP estático para levantar el proyecto localmente.
+
+Desarrollado para la optimización de los procesos internos de Vidrios y Aluminios El Carmen.
