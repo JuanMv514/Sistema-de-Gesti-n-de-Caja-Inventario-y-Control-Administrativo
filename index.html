@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar sesión | Vidrios y Aluminios El Carmen</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+  <div class="login">
+    <section class="login-aside">
+      <div class="brand">
+        <div class="brand-mark">EC</div>
+        <div class="brand-text"><strong>Vidrios y Aluminios</strong><span>El Carmen</span></div>
+      </div>
+      <div>
+        <h1>Gestión de caja, inventario y control administrativo</h1>
+        <p>Un solo lugar para registrar ventas, controlar existencias y llevar las cuentas del negocio.</p>
+        <ul class="login-points">
+          <li>Caja y ventas en tiempo real</li>
+          <li>Inventario con alertas de stock bajo</li>
+          <li>Reportes claros del negocio</li>
+        </ul>
+      </div>
+      <p class="login-copy">© 2026 Vidrios y Aluminios El Carmen · Desarrollado por AIMÁTIKA</p>
+    </section>
+
+    <section class="login-panel">
+      <div class="login-card">
+        <h2>Bienvenido</h2>
+        <p class="text-muted">Ingresa con tu cuenta para continuar.</p>
+
+        <form id="login-form">
+          <div class="field">
+            <label class="label" for="email">Correo electrónico</label>
+            <input class="input" id="email" name="email" type="email" placeholder="usuario@correo.com" autocomplete="username" required>
+          </div>
+          <div class="field">
+            <label class="label" for="password">Contraseña</label>
+            <input class="input" id="password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required>
+          </div>
+          <p id="login-error" class="alert alert-danger hidden">Credenciales inválidas.</p>
+          <!-- Vista previa: enlaza a la primera pantalla. Luego lo gestionará JavaScript. -->
+          <a class="btn btn-primary btn-block" href="html/caja.html">Ingresar</a>
+        </form>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
