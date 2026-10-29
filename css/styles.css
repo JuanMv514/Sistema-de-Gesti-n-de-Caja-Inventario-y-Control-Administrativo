@@ -1,0 +1,4 @@
+.nav-link { padding: 0.25rem 0.5rem; border-radius: 0.25rem; }
+.nav-link:hover { background: #334155; }
+.nav-link.active { background: #2563eb; }
+
