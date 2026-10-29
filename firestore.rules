@@ -6,73 +6,120 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function userDoc() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    function isActiveUser() {
+      return signedIn() && userDoc().activo != false;
+    }
+
     function userRole() {
-      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol;
+      return userDoc().rol;
     }
 
     function isAdmin() {
-      return signedIn() && userRole() == 'Administrador';
+      return isActiveUser() && userRole() == 'Administrador';
     }
 
+    function canManageCashAndSales() {
+      return isActiveUser() && userRole() in ['Administrador', 'Cajero', 'Empleado'];
+    }
+
+    function canManageInventory() {
+      return isActiveUser() && userRole() in ['Administrador', 'Inventario', 'Empleado'];
+    }
+
+    function canManageAccounting() {
+      return isActiveUser() && userRole() in ['Administrador', 'Contabilidad', 'Empleado'];
+    }
+
+    // Denegar por defecto cualquier ruta no declarada explícitamente
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Usuarios: lectura para usuarios autenticados activos; escritura exclusiva de Administrador
+    // (impide que cualquier usuario se otorgue el rol de Administrador)
     match /usuarios/{uid} {
-      allow read: if signedIn();
-      allow write: if isAdmin();
+      allow read: if isActiveUser();
+      allow create, update: if isAdmin()
+        && !('password' in request.resource.data)
+        && !('clave' in request.resource.data);
+      allow delete: if false;
     }
 
+    // Productos: catálogo de inventario (no se permite borrado físico para conservar historial)
     match /productos/{productoId} {
-      allow read: if signedIn();
-      allow create, update: if signedIn()
+      allow read: if isActiveUser();
+      allow create: if canManageInventory()
+        && request.resource.data.precio >= 0
+        && request.resource.data.stock >= 0
+        && request.resource.data.stockMinimo >= 0;
+      allow update: if (canManageInventory() || canManageCashAndSales())
         && request.resource.data.precio >= 0
         && request.resource.data.stock >= 0;
-      allow delete: if false; // No eliminar registros históricos
-    }
-
-    match /clientes/{clienteId} {
-      allow read, create, update: if signedIn();
       allow delete: if false;
     }
 
+    // Clientes
+    match /clientes/{clienteId} {
+      allow read: if isActiveUser();
+      allow create, update: if canManageCashAndSales();
+      allow delete: if false;
+    }
+
+    // Cajas: una caja cerrada jamás puede reabrirse ni modificarse silenciosamente
     match /cajas/{cajaId} {
-      allow read: if signedIn();
-      allow create: if signedIn()
+      allow read: if isActiveUser();
+      allow create: if canManageCashAndSales()
         && request.resource.data.estado == 'Abierta'
         && request.resource.data.montoInicial >= 0;
-      // Una caja cerrada no puede volver a modificarse sin auditoría
-      allow update: if signedIn() && resource.data.estado == 'Abierta';
+      allow update: if canManageCashAndSales()
+        && resource.data.estado == 'Abierta';
       allow delete: if false;
     }
 
+    // Ventas: inmutables en sus totales; solo un Administrador puede pasar su estado a Anulada o Devuelta
     match /ventas/{ventaId} {
-      allow read: if signedIn();
-      allow create: if signedIn()
+      allow read: if isActiveUser();
+      allow create: if canManageCashAndSales()
         && request.resource.data.total > 0
         && request.resource.data.items.size() > 0;
-      // Solo se permite actualizar el estado para Anulada / Devuelta con auditoría, nunca borrar
       allow update: if isAdmin()
         && resource.data.estado == 'Completada'
-        && request.resource.data.estado in ['Anulada', 'Devuelta'];
+        && request.resource.data.estado in ['Anulada', 'Devuelta']
+        && request.resource.data.total == resource.data.total;
       allow delete: if false;
     }
 
+    // Movimientos de inventario (Kardex histórico inmutable)
     match /movimientos_inventario/{movId} {
-      allow read, create: if signedIn();
+      allow read: if isActiveUser();
+      allow create: if canManageInventory() || canManageCashAndSales();
       allow update, delete: if false;
     }
 
+    // Movimientos contables (Ingresos y Gastos)
     match /movimientos_contables/{movId} {
-      allow read, create: if signedIn();
-      allow update, delete: if false;
+      allow read: if isActiveUser();
+      allow create: if canManageAccounting() || canManageCashAndSales()
+        && request.resource.data.monto > 0;
+      allow update: if isAdmin();
+      allow delete: if false;
     }
 
+    // Devoluciones (requiere rol Administrador)
     match /devoluciones/{devId} {
-      allow read: if signedIn();
+      allow read: if isActiveUser();
       allow create: if isAdmin();
       allow update, delete: if false;
     }
 
+    // Auditoría del sistema (solo lectura para Administrador, inserción en operaciones trazables)
     match /auditoria/{audId} {
       allow read: if isAdmin();
-      allow create: if signedIn();
+      allow create: if isActiveUser();
       allow update, delete: if false;
     }
   }

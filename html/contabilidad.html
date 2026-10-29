@@ -38,7 +38,7 @@
       </ul>
     </nav>
     <div class="sidebar-footer">
-      <div class="avatar">AD</div>
+      <div class="avatar" id="user-avatar">AD</div>
       <div class="user-meta"><strong id="user-name">Administrador</strong><span id="user-role">Rol: Administrador</span></div>
       <a class="logout" href="../index.html" title="Cerrar sesión" aria-label="Cerrar sesión">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
@@ -59,17 +59,32 @@
         <h1>Contabilidad Básica</h1>
         <p>Ingresos, gastos y movimientos administrativos</p>
       </div>
+      <span class="badge badge-warning" id="firebase-status-badge" title="Estado de conexión con Firebase Firestore" style="font-size:.74rem">Modo local · Firebase pendiente</span>
       <span class="topbar-date">Vidrios y Aluminios El Carmen</span>
     </header>
 
     <main id="app-root">
-      <!-- VISTA: Contabilidad Básica (se inyecta en #app-root) -->
+      <!-- VISTA: Contabilidad Básica (Sección 8 · Ingresos, gastos, flujo efectivo vs. bancos y resultados) -->
       <div class="view" data-view="contabilidad">
 
+        <div id="cont-feedback" class="alert alert-info hidden" role="status" style="margin-bottom:1rem"></div>
+
         <div class="grid grid-3" style="margin-bottom:1.25rem">
-          <div class="card stat income"><div class="stat-label">Ingresos del mes</div><p class="stat-value num">$ 4.820.000</p><span class="stat-note">18 movimientos</span></div>
-          <div class="card stat expense"><div class="stat-label">Gastos del mes</div><p class="stat-value num">$ 2.135.000</p><span class="stat-note">11 movimientos</span></div>
-          <div class="card stat"><div class="stat-label">Balance</div><p class="stat-value num">$ 2.685.000</p><span class="stat-note">Ingresos − gastos</span></div>
+          <div class="card stat income">
+            <div class="stat-label">Ingresos registrados</div>
+            <p class="stat-value num" id="cont-kpi-ingresos">$ 0</p>
+            <span class="stat-note" id="cont-note-ingresos">0 movimientos · Efectivo: $ 0</span>
+          </div>
+          <div class="card stat expense">
+            <div class="stat-label">Gastos registrados</div>
+            <p class="stat-value num" id="cont-kpi-gastos">$ 0</p>
+            <span class="stat-note" id="cont-note-gastos">0 movimientos · Efectivo: $ 0</span>
+          </div>
+          <div class="card stat">
+            <div class="stat-label">Resultado del período (Ingresos − Gastos)</div>
+            <p class="stat-value num" id="cont-kpi-balance">$ 0</p>
+            <span class="stat-note" id="cont-note-balance">Flujo neto acumulado</span>
+          </div>
         </div>
 
         <!-- Panel superior: alternar entre registrar ingreso y gasto -->
@@ -85,24 +100,101 @@
             <div class="tab-panels">
               <form class="tab-panel" id="panel-ingreso">
                 <div class="form-grid">
-                  <div class="field"><label class="label" for="ing-concepto">Concepto</label><input class="input" id="ing-concepto" placeholder="Ej: Abono de cliente" required></div>
-                  <div class="field"><label class="label" for="ing-categoria">Categoría</label>
-                    <select class="select" id="ing-categoria"><option>Ventas</option><option>Abonos</option><option>Otros ingresos</option></select></div>
-                  <div class="field"><label class="label" for="ing-monto">Monto</label><input class="input" id="ing-monto" type="number" min="0" placeholder="0" required></div>
-                  <div class="field"><label class="label" for="ing-fecha">Fecha</label><input class="input" id="ing-fecha" type="date" required></div>
-                  <div class="field full"><label class="label" for="ing-nota">Nota</label><textarea class="textarea" id="ing-nota" rows="2" placeholder="Opcional"></textarea></div>
+                  <div class="field">
+                    <label class="label" for="ing-concepto">Concepto *</label>
+                    <input class="input" id="ing-concepto" placeholder="Ej: Anticipo instalación ventanal" required>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="ing-categoria">Categoría *</label>
+                    <select class="select" id="ing-categoria">
+                      <option value="Abonos">Abonos / Anticipos de clientes</option>
+                      <option value="Servicio de instalación">Servicio de instalación / corte</option>
+                      <option value="Otros ingresos">Otros ingresos autorizados</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="ing-monto">Valor (COP) *</label>
+                    <input class="input num" id="ing-monto" type="number" min="1" step="100" placeholder="0" required>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="ing-fecha">Fecha *</label>
+                    <input class="input" id="ing-fecha" type="date" required>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="ing-metodo">Método de pago *</label>
+                    <select class="select" id="ing-metodo">
+                      <option value="Efectivo">Efectivo</option>
+                      <option value="Transferencia">Transferencia</option>
+                      <option value="Tarjeta débito">Tarjeta débito</option>
+                      <option value="Tarjeta crédito">Tarjeta crédito</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="ing-soporte">Soporte documental / Comprobante</label>
+                    <input class="input" id="ing-soporte" placeholder="Ej: Recibo #108 / Ref. bancaria">
+                  </div>
+                  <div class="field full">
+                    <label class="check">
+                      <input type="checkbox" id="ing-afecta-caja">
+                      Ingresar este dinero en el efectivo físico de la caja abierta actual
+                    </label>
+                  </div>
+                  <div class="field full">
+                    <label class="label" for="ing-nota">Observaciones</label>
+                    <textarea class="textarea" id="ing-nota" rows="2" placeholder="Detalle adicional opcional"></textarea>
+                  </div>
                 </div>
                 <div style="margin-top:1rem"><button type="submit" class="btn btn-primary">Guardar ingreso</button></div>
               </form>
 
               <form class="tab-panel" id="panel-gasto">
                 <div class="form-grid">
-                  <div class="field"><label class="label" for="gas-concepto">Concepto</label><input class="input" id="gas-concepto" placeholder="Ej: Pago de arriendo" required></div>
-                  <div class="field"><label class="label" for="gas-categoria">Categoría</label>
-                    <select class="select" id="gas-categoria"><option>Servicios</option><option>Arriendo</option><option>Compra de mercancía</option><option>Nómina informal</option><option>Otros gastos</option></select></div>
-                  <div class="field"><label class="label" for="gas-monto">Monto</label><input class="input" id="gas-monto" type="number" min="0" placeholder="0" required></div>
-                  <div class="field"><label class="label" for="gas-fecha">Fecha</label><input class="input" id="gas-fecha" type="date" required></div>
-                  <div class="field full"><label class="label" for="gas-nota">Nota</label><textarea class="textarea" id="gas-nota" rows="2" placeholder="Opcional"></textarea></div>
+                  <div class="field">
+                    <label class="label" for="gas-concepto">Concepto *</label>
+                    <input class="input" id="gas-concepto" placeholder="Ej: Pago de energía del local" required>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="gas-categoria">Categoría *</label>
+                    <select class="select" id="gas-categoria">
+                      <option value="Servicios">Servicios públicos</option>
+                      <option value="Arriendo">Arriendo</option>
+                      <option value="Compra de mercancía">Compra de mercancía / materiales</option>
+                      <option value="Transporte y fletes">Transporte y fletes</option>
+                      <option value="Nómina y mano de obra">Nómina y mano de obra</option>
+                      <option value="Otros gastos">Otros gastos</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="gas-monto">Valor (COP) *</label>
+                    <input class="input num" id="gas-monto" type="number" min="1" step="100" placeholder="0" required>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="gas-fecha">Fecha *</label>
+                    <input class="input" id="gas-fecha" type="date" required>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="gas-metodo">Método de pago *</label>
+                    <select class="select" id="gas-metodo">
+                      <option value="Efectivo">Efectivo</option>
+                      <option value="Transferencia">Transferencia</option>
+                      <option value="Tarjeta débito">Tarjeta débito</option>
+                      <option value="Tarjeta crédito">Tarjeta crédito</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="gas-soporte">Soporte documental / Factura</label>
+                    <input class="input" id="gas-soporte" placeholder="Ej: Factura proveedor #8832">
+                  </div>
+                  <div class="field full">
+                    <label class="check">
+                      <input type="checkbox" id="gas-afecta-caja">
+                      Descontar este pago del efectivo físico de la caja abierta actual
+                    </label>
+                  </div>
+                  <div class="field full">
+                    <label class="label" for="gas-nota">Observaciones</label>
+                    <textarea class="textarea" id="gas-nota" rows="2" placeholder="Detalle adicional opcional"></textarea>
+                  </div>
                 </div>
                 <div style="margin-top:1rem"><button type="submit" class="btn btn-danger">Guardar gasto</button></div>
               </form>
@@ -110,22 +202,41 @@
           </div>
         </section>
 
-        <!-- Tabla central: historial de movimientos (overflow-x para móviles) -->
+        <!-- Tabla central: historial de movimientos -->
         <section class="card" style="margin-top:1.25rem">
           <div class="card-header">
-            <h3>Historial de movimientos</h3>
-            <select class="select" style="width:auto" aria-label="Filtrar por tipo"><option>Todos</option><option>Ingresos</option><option>Gastos</option></select>
+            <h3>Historial de movimientos financieros</h3>
+            <div style="display:flex; gap:.5rem; flex-wrap:wrap">
+              <select class="select" id="cont-filtro-tipo" style="width:auto" aria-label="Filtrar por tipo">
+                <option value="Todos">Todos los tipos</option>
+                <option value="Ingresos">Solo Ingresos</option>
+                <option value="Gastos">Solo Gastos</option>
+              </select>
+              <select class="select" id="cont-filtro-metodo" style="width:auto" aria-label="Filtrar por método">
+                <option value="Todos">Todos los métodos</option>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Tarjeta débito">Tarjeta débito</option>
+                <option value="Tarjeta crédito">Tarjeta crédito</option>
+              </select>
+            </div>
           </div>
           <div class="table-wrap">
             <table class="table" id="tabla-movimientos">
-              <thead><tr><th>Fecha</th><th>Tipo</th><th>Categoría</th><th>Concepto</th><th class="num">Monto</th><th>Registrado por</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Tipo</th>
+                  <th>Categoría</th>
+                  <th>Concepto</th>
+                  <th>Método / Caja</th>
+                  <th>Soporte</th>
+                  <th class="num">Monto</th>
+                  <th>Responsable</th>
+                </tr>
+              </thead>
               <tbody>
-                <!-- JavaScript asigna .text-income o .text-expense al monto según el tipo -->
-                <tr><td>29/10/2026</td><td><span class="badge badge-success">Ingreso</span></td><td>Ventas</td><td>Venta de contado #0045</td><td class="num text-income">+ $ 206.000</td><td>Administrador</td></tr>
-                <tr><td>28/10/2026</td><td><span class="badge badge-danger">Gasto</span></td><td>Servicios</td><td>Pago de energía</td><td class="num text-expense">− $ 180.000</td><td>Administrador</td></tr>
-                <tr><td>28/10/2026</td><td><span class="badge badge-success">Ingreso</span></td><td>Abonos</td><td>Abono cliente instalación ventanal</td><td class="num text-income">+ $ 500.000</td><td>Empleado</td></tr>
-                <tr><td>27/10/2026</td><td><span class="badge badge-danger">Gasto</span></td><td>Compra de mercancía</td><td>Perfiles de aluminio (proveedor)</td><td class="num text-expense">− $ 920.000</td><td>Administrador</td></tr>
-                <tr><td>26/10/2026</td><td><span class="badge badge-danger">Gasto</span></td><td>Arriendo</td><td>Arriendo del local</td><td class="num text-expense">− $ 800.000</td><td>Administrador</td></tr>
+                <tr><td colspan="8" class="text-muted" style="text-align:center; padding:1.5rem">No hay movimientos financieros registrados.</td></tr>
               </tbody>
             </table>
           </div>

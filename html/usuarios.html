@@ -38,7 +38,7 @@
       </ul>
     </nav>
     <div class="sidebar-footer">
-      <div class="avatar">AD</div>
+      <div class="avatar" id="user-avatar">AD</div>
       <div class="user-meta"><strong id="user-name">Administrador</strong><span id="user-role">Rol: Administrador</span></div>
       <a class="logout" href="../index.html" title="Cerrar sesión" aria-label="Cerrar sesión">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
@@ -59,45 +59,112 @@
         <h1>Usuarios y Seguridad</h1>
         <p>Usuarios, roles y permisos de acceso</p>
       </div>
+      <span class="badge badge-warning" id="firebase-status-badge" title="Estado de conexión con Firebase Firestore" style="font-size:.74rem">Modo local · Firebase pendiente</span>
       <span class="topbar-date">Vidrios y Aluminios El Carmen</span>
     </header>
 
     <main id="app-root">
-      <!-- VISTA: Usuarios y Seguridad (solo administradores) -->
+      <!-- VISTA: Usuarios y Seguridad (Sección 10 · Control de roles, activación y auditoría) -->
       <div class="view" data-view="usuarios">
         <div class="page-header">
-          <h2>Usuarios del sistema</h2>
-          <div class="page-actions"><a class="btn btn-primary" href="#modal-usuario">+ Nuevo usuario</a></div>
+          <div>
+            <h2>Usuarios y control de acceso</h2>
+            <p class="text-muted" style="margin:.15rem 0 0; font-size:.86rem">Gestión de perfiles autorizados, asignación de roles y bitácora de auditoría</p>
+          </div>
+          <div class="page-actions">
+            <button type="button" class="btn btn-primary" id="btn-nuevo-usuario">+ Nuevo usuario</button>
+          </div>
         </div>
+
+        <div id="usr-feedback" class="alert alert-info hidden" role="status" style="margin-bottom:1rem"></div>
 
         <section class="card">
           <div class="table-wrap">
             <table class="table" id="tabla-usuarios">
-              <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Correo electrónico</th>
+                  <th>Rol asignado</th>
+                  <th>Estado</th>
+                  <th class="text-right">Acciones</th>
+                </tr>
+              </thead>
               <tbody>
-                <tr><td>Administrador</td><td>admin@elcarmen.com</td><td><span class="badge">Administrador</span></td><td><span class="badge badge-success">Activo</span></td><td class="text-right"><a href="#">Editar</a></td></tr>
-                <tr><td>Empleado de caja</td><td>caja@elcarmen.com</td><td><span class="badge badge-warning">Empleado</span></td><td><span class="badge badge-success">Activo</span></td><td class="text-right"><a href="#">Editar</a></td></tr>
-                <tr><td>Empleado bodega</td><td>bodega@elcarmen.com</td><td><span class="badge badge-warning">Empleado</span></td><td><span class="badge badge-danger">Inactivo</span></td><td class="text-right"><a href="#">Editar</a></td></tr>
+                <tr><td colspan="5" class="text-muted" style="text-align:center; padding:1.5rem">No hay usuarios registrados.</td></tr>
               </tbody>
             </table>
           </div>
         </section>
 
         <div class="alert alert-info" style="margin-top:1.25rem">
-          <b>Roles:</b> el Administrador accede a todos los módulos y gestiona usuarios; el Empleado solo a Caja, Inventario y Contabilidad.
+          <b>Seguridad y roles (Firebase Authentication):</b> las contraseñas nunca se almacenan en documentos de Firestore.
+          Roles disponibles: <b>Administrador</b> (acceso total), <b>Cajero</b> (apertura/cierre de caja y ventas), <b>Inventario</b> (productos y bodega) y <b>Contabilidad</b> (ingresos, gastos y reportes).
         </div>
 
+        <!-- Bitácora de actividad relevante y auditoría -->
+        <section class="card" style="margin-top:1.25rem">
+          <div class="card-header">
+            <h3>Actividad relevante del sistema (Auditoría)</h3>
+            <span class="badge" id="usr-auditoria-count">0 eventos</span>
+          </div>
+          <div class="table-wrap">
+            <table class="table" id="tabla-auditoria">
+              <thead>
+                <tr>
+                  <th>Fecha y hora</th>
+                  <th>Operación</th>
+                  <th>Usuario</th>
+                  <th>Detalle de trazabilidad</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.5rem">No hay eventos de auditoría registrados.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Modal: crear o editar usuario -->
         <div class="modal-overlay" id="modal-usuario" role="dialog" aria-modal="true" aria-labelledby="titulo-usuario">
           <div class="modal">
-            <div class="modal-header"><h3 id="titulo-usuario">Nuevo usuario</h3><a class="modal-close" href="#" aria-label="Cerrar">×</a></div>
+            <div class="modal-header"><h3 id="titulo-usuario">Nuevo usuario autorizado</h3><a class="modal-close" href="#" aria-label="Cerrar">×</a></div>
             <form id="form-usuario">
+              <input type="hidden" id="usr-id" value="">
               <div class="modal-body form-grid">
-                <div class="field full"><label class="label" for="usr-nombre">Nombre</label><input class="input" id="usr-nombre" required></div>
-                <div class="field full"><label class="label" for="usr-correo">Correo electrónico</label><input class="input" id="usr-correo" type="email" required></div>
-                <div class="field"><label class="label" for="usr-rol">Rol</label><select class="select" id="usr-rol"><option>Empleado</option><option>Administrador</option></select></div>
-                <div class="field"><label class="label" for="usr-clave">Contraseña temporal</label><input class="input" id="usr-clave" type="password" minlength="6" required></div>
+                <div class="field full">
+                  <label class="label" for="usr-nombre">Nombre completo *</label>
+                  <input class="input" id="usr-nombre" required placeholder="Ej: Laura Gómez">
+                </div>
+                <div class="field full">
+                  <label class="label" for="usr-correo">Correo electrónico *</label>
+                  <input class="input" id="usr-correo" type="email" required placeholder="usuario@elcarmen.com">
+                </div>
+                <div class="field">
+                  <label class="label" for="usr-rol">Rol del sistema *</label>
+                  <select class="select" id="usr-rol">
+                    <option value="Cajero">Cajero</option>
+                    <option value="Inventario">Inventario</option>
+                    <option value="Contabilidad">Contabilidad</option>
+                    <option value="Empleado">Empleado general</option>
+                    <option value="Administrador">Administrador</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="label" for="usr-estado">Estado de la cuenta</label>
+                  <select class="select" id="usr-estado">
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo (acceso bloqueado)</option>
+                  </select>
+                </div>
+                <div class="field full">
+                  <div id="usr-error" class="alert alert-danger hidden"></div>
+                </div>
               </div>
-              <div class="modal-footer"><a class="btn btn-outline" href="#">Cancelar</a><button type="submit" class="btn btn-primary">Crear usuario</button></div>
+              <div class="modal-footer">
+                <a class="btn btn-outline" href="#">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Guardar usuario</button>
+              </div>
             </form>
           </div>
         </div>
