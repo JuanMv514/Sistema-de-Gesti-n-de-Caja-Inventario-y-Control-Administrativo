@@ -23,14 +23,14 @@
     <nav class="nav" aria-label="Principal">
       <p class="nav-title">Módulos</p>
       <ul class="nav-list">
-        <li><a class="nav-link" href="reportes.html" title="Dashboard y Reportes">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg><span class="nav-text">Dashboard y Reportes</span></a></li>
         <li><a class="nav-link" href="caja.html" title="Caja y Ventas">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg><span class="nav-text">Caja y Ventas</span></a></li>
         <li><a class="nav-link" href="inventario.html" title="Inventario">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg><span class="nav-text">Inventario</span></a></li>
         <li><a class="nav-link" href="contabilidad.html" title="Contabilidad">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="nav-text">Contabilidad</span></a></li>
+        <li><a class="nav-link" href="reportes.html" title="Consultas y Reportes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg><span class="nav-text">Reportes</span></a></li>
         <li data-role="admin"><a class="nav-link active" href="usuarios.html" title="Usuarios">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg><span class="nav-text">Usuarios</span></a></li>
       </ul>
@@ -55,7 +55,7 @@
       </label>
       <div class="topbar-title">
         <h1>Usuarios y Seguridad</h1>
-        <p>Cuentas de acceso, roles y permisos</p>
+        <p>Usuarios, roles y permisos de acceso</p>
       </div>
       <span class="topbar-date">Vidrios y Aluminios El Carmen</span>
     </header>
@@ -63,30 +63,34 @@
     <main id="app-root">
       <!-- VISTA: Usuarios y Seguridad (solo administradores) -->
       <div class="view" data-view="usuarios">
-        <div class="toolbar" style="justify-content:space-between">
-          <span class="text-muted">3 cuentas registradas · El Administrador tiene acceso completo; el Empleado opera Caja, Inventario y Contabilidad.</span>
-          <a class="btn btn-primary" href="#modal-usuario">+ Nuevo usuario</a>
+        <div class="page-header">
+          <h2>Usuarios del sistema</h2>
+          <div class="page-actions"><a class="btn btn-primary" href="#modal-usuario">+ Nuevo usuario</a></div>
         </div>
 
         <section class="card">
           <div class="table-wrap">
             <table class="table" id="tabla-usuarios">
-              <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th class="text-right">Acciones</th></tr></thead>
+              <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
               <tbody>
-                <tr><td>Administrador</td><td>admin@elcarmen.com</td><td><span class="badge">Administrador</span></td><td><span class="badge badge-success">Activo</span></td><td class="text-right"><a href="#modal-usuario">Editar</a></td></tr>
-                <tr><td>Empleado de caja</td><td>caja@elcarmen.com</td><td><span class="badge badge-warning">Empleado</span></td><td><span class="badge badge-success">Activo</span></td><td class="text-right"><a href="#modal-usuario">Editar</a></td></tr>
-                <tr><td>Empleado bodega</td><td>bodega@elcarmen.com</td><td><span class="badge badge-warning">Empleado</span></td><td><span class="badge badge-danger">Inactivo</span></td><td class="text-right"><a href="#modal-usuario">Editar</a></td></tr>
+                <tr><td>Administrador</td><td>admin@elcarmen.com</td><td><span class="badge">Administrador</span></td><td><span class="badge badge-success">Activo</span></td><td class="text-right"><a href="#">Editar</a></td></tr>
+                <tr><td>Empleado de caja</td><td>caja@elcarmen.com</td><td><span class="badge badge-warning">Empleado</span></td><td><span class="badge badge-success">Activo</span></td><td class="text-right"><a href="#">Editar</a></td></tr>
+                <tr><td>Empleado bodega</td><td>bodega@elcarmen.com</td><td><span class="badge badge-warning">Empleado</span></td><td><span class="badge badge-danger">Inactivo</span></td><td class="text-right"><a href="#">Editar</a></td></tr>
               </tbody>
             </table>
           </div>
         </section>
+
+        <div class="alert alert-info" style="margin-top:1.25rem">
+          <b>Roles:</b> el Administrador accede a todos los módulos y gestiona usuarios; el Empleado solo a Caja, Inventario y Contabilidad.
+        </div>
 
         <div class="modal-overlay" id="modal-usuario" role="dialog" aria-modal="true" aria-labelledby="titulo-usuario">
           <div class="modal">
             <div class="modal-header"><h3 id="titulo-usuario">Nuevo usuario</h3><a class="modal-close" href="#" aria-label="Cerrar">×</a></div>
             <form id="form-usuario">
               <div class="modal-body form-grid">
-                <div class="field full"><label class="label" for="usr-nombre">Nombre completo</label><input class="input" id="usr-nombre" required></div>
+                <div class="field full"><label class="label" for="usr-nombre">Nombre</label><input class="input" id="usr-nombre" required></div>
                 <div class="field full"><label class="label" for="usr-correo">Correo electrónico</label><input class="input" id="usr-correo" type="email" required></div>
                 <div class="field"><label class="label" for="usr-rol">Rol</label><select class="select" id="usr-rol"><option>Empleado</option><option>Administrador</option></select></div>
                 <div class="field"><label class="label" for="usr-clave">Contraseña temporal</label><input class="input" id="usr-clave" type="password" minlength="6" required></div>
