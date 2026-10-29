@@ -1,0 +1,103 @@
+/* ==========================================================================
+   Componentes reutilizables: botones, tarjetas, formularios, tablas, etc.
+   ========================================================================== */
+
+/* ---------- Botones ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  padding: .6rem 1.1rem;
+  border: 1px solid transparent; border-radius: var(--radius-sm);
+  font-weight: 600; font-size: .92rem; cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s, box-shadow .15s;
+}
+.btn:hover { text-decoration: none; }
+.btn svg { width: 18px; height: 18px; }
+.btn-primary { background: var(--navy-800); color: var(--white); }
+.btn-primary:hover { background: var(--navy-700); box-shadow: var(--shadow-sm); }
+.btn-outline { background: var(--white); color: var(--navy-800); border-color: var(--navy-800); }
+.btn-outline:hover { background: var(--navy-50); }
+.btn-danger { background: var(--danger); color: var(--white); }
+.btn-danger:hover { filter: brightness(.92); }
+.btn-block { width: 100%; }
+.btn:disabled, .btn[disabled] { opacity: .5; cursor: not-allowed; box-shadow: none; }
+
+/* ---------- Tarjetas ---------- */
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+}
+.card-header h3 { margin: 0; }
+.card-body { padding: 1.25rem; }
+
+/* Tarjeta de métrica */
+.stat { padding: 1.25rem; border-left: 4px solid var(--navy-800); }
+.stat-label { font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+.stat-value { margin: .25rem 0 0; font-size: 1.7rem; font-weight: 700; color: var(--navy-900); }
+.stat-note { font-size: .8rem; color: var(--text-muted); }
+
+/* ---------- Formularios ---------- */
+.form-grid { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.field { display: grid; gap: .35rem; }
+.field.full { grid-column: 1 / -1; }
+.label { font-size: .85rem; font-weight: 600; color: var(--navy-800); }
+.input, .select, .textarea {
+  width: 100%; padding: .6rem .8rem;
+  background: var(--white);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  transition: border-color .15s, box-shadow .15s;
+}
+.input::placeholder { color: #98a4bd; }
+.input:hover, .select:hover, .textarea:hover { border-color: var(--navy-300, #8aa6d3); }
+.input:focus, .select:focus, .textarea:focus {
+  outline: none; border-color: var(--navy-600); box-shadow: 0 0 0 3px rgba(45, 91, 184, .18);
+}
+.help { font-size: .78rem; color: var(--text-muted); }
+.error-text { font-size: .8rem; color: var(--danger); }
+
+/* ---------- Tablas ---------- */
+.table-wrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.table th {
+  padding: .75rem 1rem; text-align: left; white-space: nowrap;
+  font-size: .75rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--white); background: var(--navy-900);
+}
+.table th:first-child { border-top-left-radius: var(--radius-sm); }
+.table th:last-child  { border-top-right-radius: var(--radius-sm); }
+.table td { padding: .75rem 1rem; border-bottom: 1px solid var(--border); }
+.table tbody tr:hover { background: var(--navy-50); }
+.table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------- Etiquetas ---------- */
+.badge {
+  display: inline-block; padding: .15rem .6rem; border-radius: 999px;
+  font-size: .75rem; font-weight: 600;
+  background: var(--navy-100); color: var(--navy-800);
+}
+.badge-success { background: var(--success-bg); color: var(--success); }
+.badge-danger  { background: var(--danger-bg);  color: var(--danger); }
+.badge-warning { background: var(--warning-bg); color: var(--warning); }
+
+/* ---------- Alertas ---------- */
+.alert { padding: .75rem 1rem; border-radius: var(--radius-sm); font-size: .88rem; border-left: 4px solid; }
+.alert-info    { background: var(--navy-50);    border-color: var(--navy-600); color: var(--navy-800); }
+.alert-danger  { background: var(--danger-bg);  border-color: var(--danger);  color: var(--danger); }
+
+/* ---------- Estado vacío ---------- */
+.empty {
+  display: grid; justify-items: center; gap: .5rem;
+  padding: 3rem 1.5rem; text-align: center; color: var(--text-muted);
+}
+.empty svg { width: 48px; height: 48px; color: var(--navy-500); }
+.empty h3 { margin: 0; }
+.empty p { margin: 0; max-width: 42ch; }
+
+@media (max-width: 640px) {
+  .form-grid { grid-template-columns: 1fr; }
+}

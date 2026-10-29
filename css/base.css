@@ -1,0 +1,69 @@
+/* ==========================================================================
+   Base: variables de diseño, reset y tipografía
+   Paleta corporativa: azul marino y blanco
+   ========================================================================== */
+:root {
+  --navy-950: #050f26;
+  --navy-900: #081634;
+  --navy-800: #0d2552;
+  --navy-700: #12306b;
+  --navy-600: #1b4190;
+  --navy-500: #2d5bb8;
+  --navy-300: #8aa6d3;
+  --navy-100: #dfe7f5;
+  --navy-50:  #f1f5fb;
+
+  --white: #ffffff;
+  --text: #0f1b36;
+  --text-muted: #5b6b8a;
+  --border: #d9e0ee;
+
+  --success: #1d7a52;
+  --success-bg: #e3f4ec;
+  --danger: #b42336;
+  --danger-bg: #fbe7ea;
+  --warning: #9a6200;
+  --warning-bg: #fdf1d9;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow-sm: 0 1px 2px rgba(8, 22, 52, .08);
+  --shadow-md: 0 6px 20px rgba(8, 22, 52, .10);
+
+  --sidebar-w: 260px;
+  --font: "Inter", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--navy-50);
+}
+
+h1, h2, h3, h4 { margin: 0 0 .5rem; line-height: 1.25; color: var(--navy-900); }
+h1 { font-size: 1.6rem; font-weight: 700; }
+h2 { font-size: 1.25rem; font-weight: 650; }
+h3 { font-size: 1.05rem; font-weight: 600; }
+p  { margin: 0 0 1rem; }
+a  { color: var(--navy-600); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+img, svg { display: block; max-width: 100%; }
+button, input, select, textarea { font: inherit; color: inherit; }
+
+.hidden { display: none !important; }
+.text-muted { color: var(--text-muted); }
+.text-right { text-align: right; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+:focus-visible { outline: 3px solid var(--navy-500); outline-offset: 2px; }
