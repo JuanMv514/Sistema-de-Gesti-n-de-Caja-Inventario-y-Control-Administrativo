@@ -5,12 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vidrios y Aluminios El Carmen</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Paleta corporativa: azul marino y blanco
+    tailwind.config = {
+      theme: { extend: { colors: { navy: {
+        50: "#f0f4fa", 100: "#dbe4f3", 200: "#b7c9e6", 300: "#8aa6d3",
+        600: "#254079", 700: "#1b2f5e", 800: "#14244a", 900: "#0b1a3a"
+      } } } }
+    };
+  </script>
   <link rel="stylesheet" href="/css/styles.css">
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen">
+<body class="bg-navy-50 text-navy-900 min-h-screen">
 
   <!-- Navegación: oculta hasta que haya sesión activa -->
-  <nav id="main-nav" class="hidden bg-slate-900 text-white">
+  <nav id="main-nav" class="hidden bg-navy-900 text-white">
     <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-4">
       <span class="font-bold">El Carmen</span>
       <a href="/caja" data-link class="nav-link">Caja</a>

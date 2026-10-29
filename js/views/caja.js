@@ -65,7 +65,7 @@ export async function render(root) {
       });
       items = []; formPago.reset(); pintarItems();
       msg.textContent = "Venta registrada.";
-      msg.className = "text-sm w-full text-green-700";
+      msg.className = "text-sm w-full text-navy-700";
     } catch (err) {
       msg.textContent = err.message;
       msg.className = "text-sm w-full text-red-600";

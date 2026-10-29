@@ -27,7 +27,7 @@ export function renderEstadoCaja(container, onCajaChange) {
           <label class="text-sm text-slate-500">Monto inicial</label>
           <input name="monto" type="number" min="0" step="any" required class="block border rounded p-2">
         </div>
-        <button class="bg-green-600 hover:bg-green-700 text-white rounded px-4 py-2">Abrir caja</button>
+        <button class="bg-navy-700 hover:bg-navy-800 text-white rounded px-4 py-2">Abrir caja</button>
         <p id="msg-caja" class="text-red-600 text-sm w-full"></p>
       </form>`;
     container.querySelector("#form-abrir").addEventListener("submit", async (e) => {
@@ -43,14 +43,14 @@ export function renderEstadoCaja(container, onCajaChange) {
     container.innerHTML = `
       <div class="bg-white p-4 rounded shadow space-y-3">
         <div class="flex flex-wrap justify-between gap-2">
-          <p class="font-semibold text-green-700">Caja abierta por ${caja.abiertaPor}</p>
+          <p class="font-semibold text-navy-700">Caja abierta por ${caja.abiertaPor}</p>
           <p class="text-sm text-slate-500">Monto inicial: ${fmt(caja.montoInicial)} · Ventas: ${ventas.length}</p>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
           <div class="bg-slate-50 p-2 rounded">Efectivo<br><b>${fmt(t.efectivo)}</b></div>
           <div class="bg-slate-50 p-2 rounded">Transferencia<br><b>${fmt(t.transferencia)}</b></div>
           <div class="bg-slate-50 p-2 rounded">Tarjeta<br><b>${fmt(t.tarjeta)}</b></div>
-          <div class="bg-blue-50 p-2 rounded">Efectivo esperado<br><b>${fmt(esperado)}</b></div>
+          <div class="bg-navy-50 p-2 rounded">Efectivo esperado<br><b>${fmt(esperado)}</b></div>
         </div>
         <form id="form-cerrar" class="flex flex-wrap items-end gap-3 border-t pt-3">
           <div>
@@ -77,3 +77,4 @@ export function renderEstadoCaja(container, onCajaChange) {
     destroy() { unsubCaja(); if (unsubVentas) unsubVentas(); }
   };
 }
+
