@@ -101,3 +101,62 @@
 @media (max-width: 640px) {
   .form-grid { grid-template-columns: 1fr; }
 }
+
+
+/* ==========================================================================
+   Extensiones: utilidades, modales, pestañas y barras de herramientas
+   ========================================================================== */
+
+/* ---------- Utilidades de visibilidad ---------- */
+.block { display: block; }
+.flex { display: flex; }
+
+/* ---------- Colores semánticos para movimientos ---------- */
+.text-income  { color: var(--success); font-weight: 600; }
+.text-expense { color: var(--danger);  font-weight: 600; }
+
+/* ---------- Barra de herramientas ---------- */
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+.toolbar .input, .toolbar .select { width: auto; flex: 1 1 14rem; }
+.check { display: inline-flex; align-items: center; gap: .4rem; font-size: .88rem; color: var(--text-muted); cursor: pointer; }
+
+/* ---------- Modales (z-index alto + overlay oscuro) ----------
+   Se abren con un enlace a #id (CSS puro) o añadiendo .is-open con JavaScript. */
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 1000;
+  align-items: center; justify-content: center;
+  padding: 1rem;
+  background: rgba(5, 15, 38, .65);
+  backdrop-filter: blur(2px);
+}
+.modal-overlay:target, .modal-overlay.is-open { display: flex; }
+.modal {
+  width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto;
+  background: var(--white); border-radius: var(--radius);
+  box-shadow: 0 20px 50px rgba(5, 15, 38, .4);
+}
+.modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); background: var(--navy-900); border-radius: var(--radius) var(--radius) 0 0; }
+.modal-header h3 { margin: 0; color: var(--white); }
+.modal-close { color: rgba(255, 255, 255, .8); font-size: 1.5rem; line-height: 1; padding: 0 .4rem; }
+.modal-close:hover { color: var(--white); text-decoration: none; }
+.modal-body { padding: 1.25rem; }
+.modal-footer { display: flex; justify-content: flex-end; gap: .6rem; padding: 1rem 1.25rem; border-top: 1px solid var(--border); background: var(--navy-50); border-radius: 0 0 var(--radius) var(--radius); }
+
+/* ---------- Pestañas (radios, sin JavaScript) ---------- */
+.tabs-input { position: absolute; opacity: 0; pointer-events: none; }
+.tabs { display: flex; gap: .5rem; flex-wrap: wrap; }
+.tab {
+  padding: .65rem 1.25rem; cursor: pointer; font-weight: 600;
+  border: 1px solid var(--navy-800); border-radius: var(--radius-sm);
+  background: var(--white); color: var(--navy-800);
+  transition: background .15s, color .15s;
+}
+.tab:hover { background: var(--navy-50); }
+.tab-panel { display: none; }
+
+/* ---------- Resumen en filas ---------- */
+.summary { display: grid; gap: .5rem; margin: 0 0 1rem; }
+.summary-row { display: flex; justify-content: space-between; gap: 1rem; font-size: .92rem; }
+.summary-row.total { padding-top: .6rem; border-top: 1px dashed var(--border); font-size: 1.25rem; font-weight: 700; color: var(--navy-900); }
+.num { font-variant-numeric: tabular-nums; }

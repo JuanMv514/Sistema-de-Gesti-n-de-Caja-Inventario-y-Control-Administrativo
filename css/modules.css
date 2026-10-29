@@ -1,0 +1,85 @@
+/* ==========================================================================
+   Estilos específicos de cada módulo
+   ========================================================================== */
+
+/* ---------- Caja y Ventas ---------- */
+.pos { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 1.25rem; align-items: start; }
+
+.cash-status { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+.cash-status .grow { flex: 1; min-width: 12rem; }
+.cash-status .meta { display: flex; flex-wrap: wrap; gap: 1.5rem; font-size: .88rem; color: var(--text-muted); }
+.cash-status .meta b { color: var(--navy-900); }
+
+.chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+.chip {
+  padding: .3rem .85rem; font-size: .82rem; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 999px; background: var(--white); color: var(--navy-800);
+}
+.chip:hover { background: var(--navy-50); }
+.chip.active { background: var(--navy-800); border-color: var(--navy-800); color: var(--white); }
+
+.product-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.product-card {
+  display: flex; flex-direction: column; gap: .35rem; text-align: left;
+  padding: 1rem; cursor: pointer;
+  background: var(--white); border: 1px solid var(--border); border-radius: var(--radius);
+  transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+.product-card:hover { border-color: var(--navy-600); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.product-card:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+.product-thumb {
+  height: 72px; border-radius: var(--radius-sm); margin-bottom: .35rem;
+  display: grid; place-items: center; font-weight: 700; color: var(--navy-700);
+  background: linear-gradient(135deg, var(--navy-100), var(--navy-50));
+}
+.product-name { font-weight: 600; color: var(--navy-900); line-height: 1.25; }
+.product-meta { font-size: .78rem; color: var(--text-muted); }
+.product-price { margin-top: auto; font-weight: 700; font-size: 1.05rem; color: var(--navy-800); }
+
+/* Carrito (panel lateral) */
+.cart { position: sticky; top: 5.5rem; display: flex; flex-direction: column; max-height: calc(100vh - 7rem); }
+.cart-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; min-height: 120px; }
+.cart-item { display: grid; grid-template-columns: 1fr auto; gap: .25rem .75rem; padding: .8rem 1.25rem; border-bottom: 1px solid var(--border); }
+.cart-item .name { font-weight: 600; font-size: .9rem; }
+.cart-item .sub { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.cart-item .unit { font-size: .78rem; color: var(--text-muted); }
+.qty { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; justify-self: end; }
+.qty button { width: 28px; height: 28px; border: 0; background: var(--navy-50); color: var(--navy-800); font-weight: 700; cursor: pointer; }
+.qty button:hover { background: var(--navy-100); }
+.qty span { min-width: 32px; text-align: center; font-size: .88rem; font-weight: 600; }
+.cart-empty { padding: 2rem 1.25rem; text-align: center; color: var(--text-muted); }
+.cart-footer { padding: 1.25rem; border-top: 1px solid var(--border); background: var(--navy-50); border-radius: 0 0 var(--radius) var(--radius); }
+
+/* ---------- Contabilidad ---------- */
+#tab-ingreso:checked ~ .tab-panels #panel-ingreso,
+#tab-gasto:checked ~ .tab-panels #panel-gasto { display: block; }
+#tab-ingreso:checked ~ .tabs label[for="tab-ingreso"],
+#tab-gasto:checked ~ .tabs label[for="tab-gasto"] { background: var(--navy-800); color: var(--white); }
+.tab-panels { margin-top: 1rem; }
+.stat.income  { border-left-color: var(--success); }
+.stat.expense { border-left-color: var(--danger); }
+
+/* ---------- Inventario ---------- */
+.stock-ok  { background: var(--success-bg); color: var(--success); }
+.stock-low { background: var(--warning-bg); color: var(--warning); }
+.stock-out { background: var(--danger-bg);  color: var(--danger); }
+.row-low td:first-child { box-shadow: inset 4px 0 0 var(--warning); }
+.row-out td:first-child { box-shadow: inset 4px 0 0 var(--danger); }
+.row-low { background: #fffaf0; }
+.row-out { background: #fff6f7; }
+
+/* ---------- Consultas y Reportes ---------- */
+.section-title { display: flex; align-items: center; gap: .6rem; margin: 1.75rem 0 .75rem; font-size: 1.05rem; text-transform: uppercase; letter-spacing: .06em; color: var(--navy-800); }
+.section-title::after { content: ""; flex: 1; height: 2px; background: var(--navy-100); }
+.kpi { padding: 1.25rem; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); border-top: 4px solid var(--navy-800); }
+.kpi-label { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+.kpi-value { margin: .3rem 0 0; font-size: 2rem; font-weight: 800; color: var(--navy-900); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kpi-note { margin: .25rem 0 0; font-size: .8rem; color: var(--text-muted); }
+.kpi.alert-kpi { border-top-color: var(--warning); }
+.kpi.alert-kpi .kpi-value { color: var(--warning); }
+
+@media (max-width: 1100px) {
+  .pos { grid-template-columns: 1fr; }
+  .cart { position: static; max-height: none; }
+}
+
