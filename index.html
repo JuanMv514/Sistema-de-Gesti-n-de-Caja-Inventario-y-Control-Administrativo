@@ -30,7 +30,7 @@
           <input class="input" id="password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required>
         </div>
         <p id="login-error" class="alert alert-danger hidden">Credenciales inválidas.</p>
-        <!-- Vista previa: enlaza a Caja y Ventas (o Reportes). Luego lo gestionará JavaScript. -->
+        <!-- Vista previa: enlaza al módulo de Caja. Luego lo gestionará JavaScript. -->
         <a class="btn btn-primary btn-block" href="html/caja.html">Ingresar</a>
       </form>
       <p class="login-copy">© 2026 AIMÁTIKA · Uso interno</p>
@@ -51,13 +51,13 @@
     <nav class="nav" aria-label="Principal">
       <p class="nav-title">Módulos</p>
       <ul class="nav-list">
-        <li><a class="nav-link" href="html/caja.html" title="Caja y Ventas">
+        <li><a class="nav-link active" href="html/caja.html" title="Caja y Ventas">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg><span class="nav-text">Caja y Ventas</span></a></li>
         <li><a class="nav-link" href="html/inventario.html" title="Inventario">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg><span class="nav-text">Inventario</span></a></li>
         <li><a class="nav-link" href="html/contabilidad.html" title="Contabilidad">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="nav-text">Contabilidad</span></a></li>
-        <li><a class="nav-link active" href="html/reportes.html" title="Consultas y Reportes">
+        <li><a class="nav-link" href="html/reportes.html" title="Reportes">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg><span class="nav-text">Reportes</span></a></li>
         <li data-role="admin"><a class="nav-link" href="html/usuarios.html" title="Usuarios">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg><span class="nav-text">Usuarios</span></a></li>
@@ -82,203 +82,14 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
       </label>
       <div class="topbar-title">
-        <h1>Consultas y Reportes</h1>
-        <p>Dashboard de Caja y Ventas, Inventario y Contabilidad</p>
+        <h1>Caja y Ventas</h1>
+        <p>Punto de venta, métodos de pago y cierre de caja</p>
       </div>
       <span class="topbar-date">Vidrios y Aluminios El Carmen</span>
     </header>
 
     <main id="app-root">
-      <!-- VISTA: Consultas y Reportes · Dashboard de Caja y Ventas, Inventario y Contabilidad -->
-      <div class="view" data-view="reportes">
-
-        <!-- Cabecera operativa con filtro de periodo y acciones rápidas -->
-        <section class="dash-hero">
-          <div>
-            <h2>Resumen operativo del negocio</h2>
-            <p>Consolidado en tiempo real de Caja y Ventas, Inventario y Contabilidad Básica</p>
-          </div>
-          <div class="dash-quick">
-            <select class="hero-select" id="filtro-periodo" aria-label="Filtrar por periodo">
-              <option value="hoy" selected>Hoy · 29 oct</option>
-              <option value="semana">Esta semana</option>
-              <option value="mes">Este mes (octubre)</option>
-            </select>
-            <a class="btn btn-hero" href="html/caja.html">+ Nueva venta</a>
-            <button type="button" class="btn btn-hero-ghost" id="btn-imprimir">Imprimir / PDF</button>
-          </div>
-        </section>
-
-        <!-- Tres pilares sin redundancia: Caja y Ventas · Inventario · Contabilidad Básica -->
-        <div class="dash-pillars">
-
-          <!-- PILAR 1: CAJA Y VENTAS -->
-          <section class="card pillar-card" aria-labelledby="pilar-caja">
-            <div class="pillar-head">
-              <div class="pillar-title" id="pilar-caja">
-                <span class="pillar-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
-                </span>
-                <span>Caja y Ventas</span>
-              </div>
-              <span class="badge badge-success">Caja abierta</span>
-            </div>
-            <div class="pillar-body">
-              <div class="pillar-main">
-                <div>
-                  <span class="caption">Ventas del turno</span>
-                  <div class="big" id="rep-ventas-turno">$ 1.100.000</div>
-                </div>
-                <span class="badge">12 ventas</span>
-              </div>
-
-              <div class="meter">
-                <div class="meter-head"><span>Efectivo (58 %)</span><b class="num">$ 640.000</b></div>
-                <div class="meter-bar"><div class="meter-fill" style="width:58%"></div></div>
-              </div>
-              <div class="meter">
-                <div class="meter-head"><span>Transferencia (28 %)</span><b class="num">$ 310.000</b></div>
-                <div class="meter-bar"><div class="meter-fill" style="width:28%"></div></div>
-              </div>
-              <div class="meter">
-                <div class="meter-head"><span>Tarjeta (14 %)</span><b class="num">$ 150.000</b></div>
-                <div class="meter-bar"><div class="meter-fill" style="width:14%"></div></div>
-              </div>
-
-              <div class="summary" style="margin:0; padding-top:.55rem; border-top:1px solid var(--border)">
-                <div class="summary-row"><span>Base inicial</span><b class="num">$ 200.000</b></div>
-                <div class="summary-row"><span>Efectivo esperado en caja</span><b class="num">$ 840.000</b></div>
-              </div>
-            </div>
-            <div class="pillar-foot">
-              <span class="text-muted">Cajero: Administrador</span>
-              <a href="html/caja.html">Abrir Punto de Venta →</a>
-            </div>
-          </section>
-
-          <!-- PILAR 2: INVENTARIO -->
-          <section class="card pillar-card" aria-labelledby="pilar-inventario">
-            <div class="pillar-head">
-              <div class="pillar-title" id="pilar-inventario">
-                <span class="pillar-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg>
-                </span>
-                <span>Inventario</span>
-              </div>
-              <span class="badge badge-warning">3 por reponer</span>
-            </div>
-            <div class="pillar-body">
-              <div class="pillar-main">
-                <div>
-                  <span class="caption">Valor total en bodega</span>
-                  <div class="big" id="rep-valor-inventario">$ 18.450.000</div>
-                </div>
-                <span class="badge">128 productos</span>
-              </div>
-
-              <p class="label" style="margin:0">Alertas de reposición inmediata</p>
-              <ul class="mini-list" id="rep-alertas-inventario">
-                <li>
-                  <span><b>Silicona estructural</b><br><span class="text-muted">Mínimo: 6 u</span></span>
-                  <span class="badge stock-out">Agotado (0)</span>
-                </li>
-                <li>
-                  <span><b>Cerradura para vidrio</b><br><span class="text-muted">Mínimo: 5 u</span></span>
-                  <span class="badge stock-low">Quedan 3 u</span>
-                </li>
-                <li>
-                  <span><b>Perfil aluminio 1&quot;</b><br><span class="text-muted">Mínimo: 10 u</span></span>
-                  <span class="badge stock-low">Quedan 8 u</span>
-                </li>
-              </ul>
-            </div>
-            <div class="pillar-foot">
-              <span class="text-muted">1 agotado · 2 en stock bajo</span>
-              <a href="html/inventario.html">Gestionar stock →</a>
-            </div>
-          </section>
-
-          <!-- PILAR 3: CONTABILIDAD BÁSICA -->
-          <section class="card pillar-card" aria-labelledby="pilar-contabilidad">
-            <div class="pillar-head">
-              <div class="pillar-title" id="pilar-contabilidad">
-                <span class="pillar-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                </span>
-                <span>Contabilidad Básica</span>
-              </div>
-              <span class="badge badge-success">Margen 56 %</span>
-            </div>
-            <div class="pillar-body">
-              <div class="pillar-main">
-                <div>
-                  <span class="caption">Balance neto del periodo</span>
-                  <div class="big text-income" id="rep-balance-neto">+ $ 2.685.000</div>
-                </div>
-                <span class="badge">29 mov.</span>
-              </div>
-
-              <div class="meter">
-                <div class="meter-head"><span>Ingresos (18)</span><b class="num text-income">+ $ 4.820.000</b></div>
-                <div class="meter-bar"><div class="meter-fill success" style="width:100%"></div></div>
-              </div>
-              <div class="meter">
-                <div class="meter-head"><span>Gastos (11)</span><b class="num text-expense">− $ 2.135.000</b></div>
-                <div class="meter-bar"><div class="meter-fill danger" style="width:44%"></div></div>
-              </div>
-
-              <div class="summary" style="margin:0; padding-top:.55rem; border-top:1px solid var(--border)">
-                <div class="summary-row"><span>Principal ingreso</span><span>Ventas mostrador ($ 3,4M)</span></div>
-                <div class="summary-row"><span>Principal gasto</span><span>Compra mercancía ($ 920k)</span></div>
-              </div>
-            </div>
-            <div class="pillar-foot">
-              <span class="text-muted">Control administrativo interno</span>
-              <a href="html/contabilidad.html">Registrar movimiento →</a>
-            </div>
-          </section>
-        </div>
-
-        <!-- Detalle de actividad reciente (sin duplicar las alertas de stock) -->
-        <div class="grid grid-2">
-          <section class="card">
-            <div class="card-header">
-              <h3>Últimas ventas registradas</h3>
-              <a class="btn btn-outline" href="html/caja.html">Ver Caja</a>
-            </div>
-            <div class="table-wrap">
-              <table class="table">
-                <thead><tr><th>Hora</th><th>Detalle</th><th>Pago</th><th class="num">Total</th></tr></thead>
-                <tbody id="rep-ultimas-ventas">
-                  <tr><td>14:40</td><td>Vidrio templado 6 mm (2), Bisagra (2)</td><td><span class="badge">Efectivo</span></td><td class="num">$ 206.000</td></tr>
-                  <tr><td>13:15</td><td>Espejo 4 mm (3 m²)</td><td><span class="badge">Transferencia</span></td><td class="num">$ 195.000</td></tr>
-                  <tr><td>11:50</td><td>Riel corredizo 3 m (2), Perfil 1&quot; (4)</td><td><span class="badge">Efectivo</span></td><td class="num">$ 198.000</td></tr>
-                  <tr><td>10:25</td><td>Vidrio laminado 8 mm (2 m²)</td><td><span class="badge">Tarjeta</span></td><td class="num">$ 240.000</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section class="card">
-            <div class="card-header">
-              <h3>Últimos movimientos (Contabilidad y Bodega)</h3>
-              <a class="btn btn-outline" href="html/contabilidad.html">Ver Contabilidad</a>
-            </div>
-            <div class="table-wrap">
-              <table class="table">
-                <thead><tr><th>Fecha</th><th>Origen</th><th>Concepto</th><th class="num">Impacto</th></tr></thead>
-                <tbody id="rep-ultimos-movimientos">
-                  <tr><td>29/10</td><td><span class="badge">Inventario</span></td><td>Entrada · Vidrio templado 6 mm</td><td class="num">+ 10 m²</td></tr>
-                  <tr><td>28/10</td><td><span class="badge badge-danger">Gasto</span></td><td>Pago de energía del local</td><td class="num text-expense">− $ 180.000</td></tr>
-                  <tr><td>28/10</td><td><span class="badge badge-success">Ingreso</span></td><td>Abono instalación ventanal</td><td class="num text-income">+ $ 500.000</td></tr>
-                  <tr><td>28/10</td><td><span class="badge badge-warning">Inventario</span></td><td>Salida por merma · Espejo 4 mm</td><td class="num">− 1 m²</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-
-      </div>
+      <div class="card"><div class="empty"><h3>Dashboard</h3><p>JavaScript inyectarÃ¡ aquÃ­ la vista del mÃ³dulo seleccionado.</p></div></div>
     </main>
 
     <footer class="footer">© 2026 Vidrios y Aluminios El Carmen · AIMÁTIKA</footer>
