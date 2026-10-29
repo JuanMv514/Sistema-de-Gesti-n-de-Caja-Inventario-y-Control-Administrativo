@@ -1,14 +1,18 @@
-// Servicio de Autenticación, Roles, Permisos y Auditoría.
-// Define permisos granulares para cada operación comercial y valida en capa de negocio.
+// Servicio de Autenticación, Roles, Permisos y Control de Acceso (Secciones 10 y 12).
+// Define permisos granulares para cada rol del negocio (Administrador, Cajero, Inventario,
+// Contabilidad y Empleado) y bloquea cuentas desactivadas o sin autorización.
 
 const SESSION_KEY = "elcarmen_spa_session";
 
 export const ROLES = {
   ADMIN: "Administrador",
+  CAJERO: "Cajero",
+  INVENTARIO: "Inventario",
+  CONTABILIDAD: "Contabilidad",
   EMPLEADO: "Empleado"
 };
 
-// Matriz de permisos del sistema (sección 15)
+// Matriz de permisos del sistema (Sección 10)
 const ROLE_PERMISSIONS = {
   [ROLES.ADMIN]: new Set([
     "caja.abrir",
@@ -22,10 +26,31 @@ const ROLE_PERMISSIONS = {
     "ventas.anular",
     "ventas.devolucion",
     "clientes.crear",
+    "inventario.consultar",
     "inventario.gestionar",
+    "contabilidad.consultar",
     "contabilidad.gestionar",
     "reportes.ver",
     "usuarios.gestionar"
+  ]),
+  [ROLES.CAJERO]: new Set([
+    "caja.abrir",
+    "caja.cerrar",
+    "caja.movimiento_efectivo",
+    "ventas.registrar",
+    "ventas.consultar",
+    "clientes.crear",
+    "inventario.consultar"
+  ]),
+  [ROLES.INVENTARIO]: new Set([
+    "inventario.consultar",
+    "inventario.gestionar"
+  ]),
+  [ROLES.CONTABILIDAD]: new Set([
+    "contabilidad.consultar",
+    "contabilidad.gestionar",
+    "reportes.ver",
+    "caja.ver_cierres"
   ]),
   [ROLES.EMPLEADO]: new Set([
     "caja.abrir",
@@ -34,7 +59,9 @@ const ROLE_PERMISSIONS = {
     "ventas.registrar",
     "ventas.consultar",
     "clientes.crear",
+    "inventario.consultar",
     "inventario.gestionar",
+    "contabilidad.consultar",
     "contabilidad.gestionar"
   ])
 };
@@ -50,7 +77,8 @@ export function getCurrentUser() {
     uid: "usr-admin",
     email: "admin@elcarmen.com",
     name: "Administrador",
-    role: ROLES.ADMIN
+    role: ROLES.ADMIN,
+    activo: true
   };
 }
 
@@ -65,13 +93,20 @@ export function setCurrentUser(user) {
 
 export function hasPermission(permission, user = getCurrentUser()) {
   if (!user || !user.role) return false;
-  const set = ROLE_PERMISSIONS[user.role] || ROLE_PERMISSIONS[ROLES.EMPLEADO];
+  if (user.activo === false) return false;
+  const set = ROLE_PERMISSIONS[user.role];
+  if (!set) return false;
   return set.has(permission);
 }
 
 export function assertPermission(permission, user = getCurrentUser()) {
+  if (!user) {
+    throw new Error("Debes iniciar sesión para realizar esta operación.");
+  }
+  if (user.activo === false) {
+    throw new Error("Tu cuenta de usuario está desactivada. Contacta al Administrador.");
+  }
   if (!hasPermission(permission, user)) {
-    throw new Error(`No tienes permisos para realizar esta acción (${permission}). Requiere autorización de Administrador.`);
+    throw new Error(`No tienes permisos para realizar esta acción (${permission}). Requiere autorización de Administrador o del rol correspondiente.`);
   }
 }
-

@@ -1,9 +1,16 @@
-// Capa de persistencia transaccional y reactiva del sistema.
-// Soporta Cloud Firestore en producción y almacenamiento persistente estructurado
-// con las mismas colecciones, validaciones e integridad transaccional cuando las
-// credenciales de Firebase aún no se han configurado o en modo local (Cláusula 8).
+// Capa de acceso a datos transaccional y reactiva del sistema.
+// Cumple las Secciones 3, 4, 11, 12 y 13:
+// - Separa la interfaz de la persistencia y centraliza las colecciones del negocio.
+// - Soporta Cloud Firestore (y Firebase Emulator Suite) cuando Firebase está configurado,
+//   y almacenamiento local transaccional para desarrollo y pruebas previas a conectar Firebase/Netlify.
+// - Soporta estado inicial completamente vacío (sin datos ficticios) y catálogo base opcional para pruebas.
+// - Protege frente a errores de red y operaciones simultáneas.
 
-import { isFirebaseConfigured, getFirebaseClients } from "../firebase-config.js";
+import {
+  isFirebaseConfigured,
+  getFirebaseClients,
+  isNetworkOffline
+} from "../firebase-config.js";
 
 const STORAGE_PREFIX = "elcarmen_db_v1_";
 
@@ -19,17 +26,19 @@ export const COLLECTIONS = {
   USUARIOS: "usuarios"
 };
 
-// Catálogo base del módulo de Inventario (única fuente de verdad para Caja e Inventario)
+// Catálogo base opcional para pruebas locales de desarrollo (nunca incluye ventas ni saldos ficticios)
 export const INITIAL_PRODUCTOS = [
   {
     id: "prod-vt006",
     codigo: "VT-006",
     nombre: "Vidrio templado 6 mm",
+    descripcion: "Lámina de vidrio templado incoloro de seguridad 6 mm",
     categoria: "Vidrios",
     unidad: "m²",
     permiteDecimal: true,
     permiteDimensiones: true,
     esPersonalizado: true,
+    precioCompra: 52000,
     precio: 85000,
     stock: 24,
     stockMinimo: 10,
@@ -39,11 +48,13 @@ export const INITIAL_PRODUCTOS = [
     id: "prod-vl008",
     codigo: "VL-008",
     nombre: "Vidrio laminado 8 mm",
+    descripcion: "Vidrio laminado acústico y de seguridad 4+4 mm",
     categoria: "Vidrios",
     unidad: "m²",
     permiteDecimal: true,
     permiteDimensiones: true,
     esPersonalizado: true,
+    precioCompra: 76000,
     precio: 120000,
     stock: 12,
     stockMinimo: 10,
@@ -53,11 +64,13 @@ export const INITIAL_PRODUCTOS = [
     id: "prod-es004",
     codigo: "ES-004",
     nombre: "Espejo 4 mm",
+    descripcion: "Espejo cristal 4 mm acabado pulido",
     categoria: "Vidrios",
     unidad: "m²",
     permiteDecimal: true,
     permiteDimensiones: true,
     esPersonalizado: true,
+    precioCompra: 40000,
     precio: 65000,
     stock: 18,
     stockMinimo: 6,
@@ -67,11 +80,13 @@ export const INITIAL_PRODUCTOS = [
     id: "prod-pa100",
     codigo: "PA-100",
     nombre: "Perfil aluminio 1\"",
+    descripcion: "Perfil tubular de aluminio anodizado natural",
     categoria: "Perfiles",
     unidad: "m",
     permiteDecimal: true,
     permiteDimensiones: false,
     esPersonalizado: false,
+    precioCompra: 18000,
     precio: 28500,
     stock: 60,
     stockMinimo: 10,
@@ -81,11 +96,13 @@ export const INITIAL_PRODUCTOS = [
     id: "prod-rc300",
     codigo: "RC-300",
     nombre: "Riel corredizo 3 m",
+    descripcion: "Riel superior/inferior para sistema corredizo",
     categoria: "Perfiles",
     unidad: "m",
     permiteDecimal: true,
     permiteDimensiones: false,
     esPersonalizado: false,
+    precioCompra: 26500,
     precio: 42000,
     stock: 35,
     stockMinimo: 8,
@@ -95,11 +112,13 @@ export const INITIAL_PRODUCTOS = [
     id: "prod-bh010",
     codigo: "BH-010",
     nombre: "Bisagra hidráulica",
+    descripcion: "Bisagra de piso/puerta para vidrio templado",
     categoria: "Accesorios",
     unidad: "u",
     permiteDecimal: false,
     permiteDimensiones: false,
     esPersonalizado: false,
+    precioCompra: 11000,
     precio: 18000,
     stock: 40,
     stockMinimo: 10,
@@ -109,11 +128,13 @@ export const INITIAL_PRODUCTOS = [
     id: "prod-cv001",
     codigo: "CV-001",
     nombre: "Cerradura para vidrio",
+    descripcion: "Cerradura central con llave para puerta de vidrio",
     categoria: "Accesorios",
     unidad: "u",
     permiteDecimal: false,
     permiteDimensiones: false,
     esPersonalizado: false,
+    precioCompra: 34000,
     precio: 54000,
     stock: 3,
     stockMinimo: 5,
@@ -123,11 +144,13 @@ export const INITIAL_PRODUCTOS = [
     id: "prod-si050",
     codigo: "SI-050",
     nombre: "Silicona estructural",
+    descripcion: "Cartucho de silicona neutra para sellado de vidriería",
     categoria: "Insumos",
     unidad: "u",
     permiteDecimal: false,
     permiteDimensiones: false,
     esPersonalizado: false,
+    precioCompra: 10200,
     precio: 16500,
     stock: 0,
     stockMinimo: 6,
@@ -159,8 +182,48 @@ export const INITIAL_CLIENTES = [
   }
 ];
 
+export const INITIAL_USUARIOS = [
+  {
+    id: "usr-admin",
+    uid: "usr-admin",
+    nombre: "Administrador",
+    email: "admin@elcarmen.com",
+    rol: "Administrador",
+    activo: true,
+    creadoEn: "2026-10-01T08:00:00.000Z"
+  },
+  {
+    id: "usr-caja",
+    uid: "usr-caja",
+    nombre: "Cajero Principal",
+    email: "caja@elcarmen.com",
+    rol: "Cajero",
+    activo: true,
+    creadoEn: "2026-10-01T08:00:00.000Z"
+  },
+  {
+    id: "usr-bodega",
+    uid: "usr-bodega",
+    nombre: "Encargado Inventario",
+    email: "bodega@elcarmen.com",
+    rol: "Inventario",
+    activo: true,
+    creadoEn: "2026-10-01T08:00:00.000Z"
+  },
+  {
+    id: "usr-contabilidad",
+    uid: "usr-contabilidad",
+    nombre: "Auxiliar Contable",
+    email: "contabilidad@elcarmen.com",
+    rol: "Contabilidad",
+    activo: true,
+    creadoEn: "2026-10-01T08:00:00.000Z"
+  }
+];
+
 const listeners = new Map();
 let memoryStore = null;
+const activeLocks = new Set();
 
 function getStorage() {
   try {
@@ -205,24 +268,34 @@ export function ensureSeedData() {
   if (!readCollectionRaw(COLLECTIONS.CLIENTES)) {
     writeCollectionRaw(COLLECTIONS.CLIENTES, INITIAL_CLIENTES);
   }
+  if (!readCollectionRaw(COLLECTIONS.USUARIOS)) {
+    writeCollectionRaw(COLLECTIONS.USUARIOS, INITIAL_USUARIOS);
+  }
   for (const col of Object.values(COLLECTIONS)) {
     if (!readCollectionRaw(col)) writeCollectionRaw(col, []);
   }
 }
 
+// Deja todas las colecciones completamente vacías (para verificar Carga inicial sin datos — Prueba 1)
+export function resetDatabaseEmpty() {
+  if (!memoryStore) memoryStore = {};
+  for (const col of Object.values(COLLECTIONS)) {
+    writeCollectionRaw(col, []);
+    memoryStore[col] = [];
+  }
+  for (const col of Object.values(COLLECTIONS)) notifyListeners(col);
+}
+
+// Reinicia la base de datos para pruebas con el catálogo base de productos, clientes y usuarios pero 0 ventas/cajas
 export function resetDatabaseForTests() {
   if (!memoryStore) memoryStore = {};
   const storage = getStorage();
   for (const col of Object.values(COLLECTIONS)) {
-    if (storage) storage.removeItem(STORAGE_PREFIX + colNameSafe(col));
+    if (storage) storage.removeItem(STORAGE_PREFIX + col);
     delete memoryStore[col];
   }
   ensureSeedData();
   for (const col of Object.values(COLLECTIONS)) notifyListeners(col);
-}
-
-function colNameSafe(col) {
-  return col;
 }
 
 function notifyListeners(colName) {
@@ -239,6 +312,9 @@ function notifyListeners(colName) {
 }
 
 export function getCollection(colName) {
+  if (isNetworkOffline()) {
+    throw new Error("No fue posible consultar los datos: sin conexión con la base de datos.");
+  }
   ensureSeedData();
   const docs = readCollectionRaw(colName) || [];
   return JSON.parse(JSON.stringify(docs));
@@ -254,7 +330,11 @@ export function subscribeCollection(colName, callback) {
   if (!listeners.has(colName)) listeners.set(colName, new Set());
   const subs = listeners.get(colName);
   subs.add(callback);
-  callback(getCollection(colName));
+  try {
+    callback(getCollection(colName));
+  } catch (err) {
+    console.error("Error inicializando suscripción:", colName, err);
+  }
   return () => subs.delete(callback);
 }
 
@@ -264,60 +344,75 @@ export function generateId(prefix = "doc") {
   return `${prefix}-${Date.now()}-${idCounter++}-${rand}`;
 }
 
-// Ejecuta una transacción atómica sobre las colecciones.
-// Si cualquier validación lanza error dentro de workFn, ningún cambio se persiste.
-export async function runAtomicTransaction(workFn) {
-  ensureSeedData();
-
-  // Copia profunda de todas las colecciones antes de empezar
-  const snapshotBefore = {};
-  for (const col of Object.values(COLLECTIONS)) {
-    snapshotBefore[col] = getCollection(col);
+// Ejecuta una transacción atómica sobre las colecciones con bloqueo contra ejecuciones simultáneas conflictivas.
+// Si cualquier validación lanza error o hay fallo de red, ningún cambio se persiste.
+export async function runAtomicTransaction(workFn, options = {}) {
+  if (isNetworkOffline()) {
+    throw new Error("No se pudo guardar la operación por error de red. No se ha confirmado ningún cambio.");
   }
 
-  const touchedCollections = new Set();
+  const lockKey = options.lockKey || "global_tx";
+  if (activeLocks.has(lockKey)) {
+    throw new Error("Hay otra operación en curso. Espera a que finalice antes de enviar una solicitud simultánea.");
+  }
 
-  const tx = {
-    getAll(colName) {
-      return snapshotBefore[colName] ? JSON.parse(JSON.stringify(snapshotBefore[colName])) : [];
-    },
-    get(colName, id) {
-      const list = snapshotBefore[colName] || [];
-      const found = list.find((d) => d.id === id);
-      return found ? JSON.parse(JSON.stringify(found)) : null;
-    },
-    insert(colName, docData) {
-      const list = snapshotBefore[colName] || [];
-      const newDoc = {
-        ...JSON.parse(JSON.stringify(docData)),
-        id: docData.id || generateId(colName.slice(0, 3))
-      };
-      list.push(newDoc);
-      snapshotBefore[colName] = list;
-      touchedCollections.add(colName);
-      return newDoc;
-    },
-    update(colName, id, patch) {
-      const list = snapshotBefore[colName] || [];
-      const idx = list.findIndex((d) => d.id === id);
-      if (idx === -1) throw new Error(`Registro no encontrado en ${colName}: ${id}`);
-      list[idx] = { ...list[idx], ...JSON.parse(JSON.stringify(patch)), id };
-      touchedCollections.add(colName);
-      return list[idx];
+  activeLocks.add(lockKey);
+  try {
+    ensureSeedData();
+
+    const snapshotBefore = {};
+    for (const col of Object.values(COLLECTIONS)) {
+      snapshotBefore[col] = readCollectionRaw(col)
+        ? JSON.parse(JSON.stringify(readCollectionRaw(col)))
+        : [];
     }
-  };
 
-  // Si workFn lanza una excepción, no se escribe nada en almacenamiento (atomicidad total)
-  const result = await workFn(tx);
+    const touchedCollections = new Set();
 
-  // Confirmar (commit) los cambios de la transacción
-  for (const col of touchedCollections) {
-    writeCollectionRaw(col, snapshotBefore[col]);
-  }
+    const tx = {
+      getAll(colName) {
+        return snapshotBefore[colName] ? JSON.parse(JSON.stringify(snapshotBefore[colName])) : [];
+      },
+      get(colName, id) {
+        const list = snapshotBefore[colName] || [];
+        const found = list.find((d) => d.id === id);
+        return found ? JSON.parse(JSON.stringify(found)) : null;
+      },
+      insert(colName, docData) {
+        const list = snapshotBefore[colName] || [];
+        const newDoc = {
+          ...JSON.parse(JSON.stringify(docData)),
+          id: docData.id || generateId(colName.slice(0, 3))
+        };
+        list.push(newDoc);
+        snapshotBefore[colName] = list;
+        touchedCollections.add(colName);
+        return newDoc;
+      },
+      update(colName, id, patch) {
+        const list = snapshotBefore[colName] || [];
+        const idx = list.findIndex((d) => d.id === id);
+        if (idx === -1) throw new Error(`Registro no encontrado en ${colName}: ${id}`);
+        list[idx] = { ...list[idx], ...JSON.parse(JSON.stringify(patch)), id };
+        touchedCollections.add(colName);
+        return list[idx];
+      }
+    };
 
-  // Sincronización opcional con Cloud Firestore si las credenciales reales están activas
-  if (isFirebaseConfigured()) {
-    try {
+    const result = await workFn(tx);
+
+    // Verificar nuevamente la conexión antes de confirmar el commit
+    if (isNetworkOffline()) {
+      throw new Error("Se perdió la conexión de red antes de confirmar la escritura. No se guardaron cambios.");
+    }
+
+    // Confirmar (commit) en almacenamiento local/transaccional
+    for (const col of touchedCollections) {
+      writeCollectionRaw(col, snapshotBefore[col]);
+    }
+
+    // Sincronizar con Cloud Firestore si las credenciales reales están configuradas
+    if (isFirebaseConfigured()) {
       const fb = await getFirebaseClients();
       if (fb) {
         const { db, firestoreMod } = fb;
@@ -327,14 +422,14 @@ export async function runAtomicTransaction(workFn) {
           }
         }
       }
-    } catch (err) {
-      console.warn("Sincronización Firestore diferida:", err);
     }
-  }
 
-  for (const col of touchedCollections) {
-    notifyListeners(col);
-  }
+    for (const col of touchedCollections) {
+      notifyListeners(col);
+    }
 
-  return result;
+    return result;
+  } finally {
+    activeLocks.delete(lockKey);
+  }
 }
