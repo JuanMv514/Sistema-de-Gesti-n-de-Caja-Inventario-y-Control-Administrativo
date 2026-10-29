@@ -20,7 +20,13 @@ import {
 import {
   watchMovimientosContables,
   calcularResumenContable,
+  filtrarMovimientosContables,
+  generarInformeFinancieroContable,
+  obtenerRangoPeriodo,
   registrarMovimientoContable,
+  registrarTrasladoInterno,
+  revertirMovimientoContable,
+  exportarContabilidadCSV,
   TIPOS_CONTABLE
 } from "../services/contabilidad-service.js";
 import {
@@ -369,11 +375,14 @@ export function mountInventarioView(root) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. VISTA DE CONTABILIDAD BÁSICA (Sección 8)
+// 2. VISTA DE CONTABILIDAD BÁSICA (Secciones 1 a 16)
 // ---------------------------------------------------------------------------
 export function mountContabilidadView(root) {
   const $ = (sel) => root.querySelector(sel);
   let movimientos = [];
+  let cajaAbierta = null;
+  let ventas = [];
+  let ultimosFiltrados = [];
 
   const feedbackEl = $("#cont-feedback");
   function showFeedback(msg, isError = false) {
@@ -384,65 +393,308 @@ export function mountContabilidadView(root) {
   }
 
   const hoyIso = new Date().toISOString().slice(0, 10);
+  const currentUser = getCurrentUser();
   if ($("#ing-fecha") && !$("#ing-fecha").value) $("#ing-fecha").value = hoyIso;
   if ($("#gas-fecha") && !$("#gas-fecha").value) $("#gas-fecha").value = hoyIso;
+  if ($("#tras-fecha") && !$("#tras-fecha").value) $("#tras-fecha").value = hoyIso;
+  if ($("#ing-responsable")) $("#ing-responsable").value = currentUser.name || currentUser.email;
+  if ($("#gas-responsable")) $("#gas-responsable").value = currentUser.name || currentUser.email;
+
+  function sincronizarVisibilidadCajaEfectivo() {
+    const ingEsEfectivo = ($("#ing-metodo")?.value || "Efectivo") === "Efectivo";
+    const gasEsEfectivo = ($("#gas-metodo")?.value || "Efectivo") === "Efectivo";
+
+    const chkIng = $("#ing-afecta-caja");
+    const boxIng = $("#box-ing-afecta-caja");
+    if (chkIng && boxIng) {
+      if (!ingEsEfectivo) chkIng.checked = false;
+      chkIng.disabled = !ingEsEfectivo;
+      boxIng.style.opacity = ingEsEfectivo ? "1" : "0.5";
+    }
+
+    const chkGas = $("#gas-afecta-caja");
+    const boxGas = $("#box-gas-afecta-caja");
+    if (chkGas && boxGas) {
+      if (!gasEsEfectivo) chkGas.checked = false;
+      chkGas.disabled = !gasEsEfectivo;
+      boxGas.style.opacity = gasEsEfectivo ? "1" : "0.5";
+    }
+  }
+
+  $("#ing-metodo")?.addEventListener("change", sincronizarVisibilidadCajaEfectivo);
+  $("#gas-metodo")?.addEventListener("change", sincronizarVisibilidadCajaEfectivo);
+  sincronizarVisibilidadCajaEfectivo();
+
+  // Sincronizar selector de período superior con las fechas de filtro
+  $("#cont-periodo-informe")?.addEventListener("change", () => {
+    const per = $("#cont-periodo-informe")?.value || "todos";
+    if (per !== "personalizado") {
+      const { desde, hasta } = obtenerRangoPeriodo(per);
+      if ($("#cont-desde")) $("#cont-desde").value = desde;
+      if ($("#cont-hasta")) $("#cont-hasta").value = hasta;
+    }
+    renderContabilidad();
+  });
 
   function renderContabilidad() {
-    const res = calcularResumenContable(movimientos);
-    if ($("#cont-kpi-ingresos")) $("#cont-kpi-ingresos").textContent = formatCOP(res.ingresos);
+    const periodoSel = $("#cont-periodo-informe")?.value || "todos";
+    const desde = $("#cont-desde")?.value || "";
+    const hasta = $("#cont-hasta")?.value || "";
+
+    const informe = generarInformeFinancieroContable(movimientos, {
+      periodo: periodoSel,
+      desde,
+      hasta
+    });
+    const resGlobal = calcularResumenContable(movimientos, {
+      cajas: cajaAbierta ? [cajaAbierta] : [],
+      ventas
+    });
+    const resPeriodo = informe.resumen;
+
+    // Indicador 1: Ingresos
+    if ($("#cont-kpi-ingresos")) {
+      $("#cont-kpi-ingresos").textContent = formatCOP(resPeriodo.ingresos);
+    }
     if ($("#cont-note-ingresos")) {
-      $("#cont-note-ingresos").textContent = `${res.countIngresos} mov. · Efectivo: ${formatCOP(res.ingresosEfectivo)} · Bancos: ${formatCOP(res.ingresosBancos)}`;
-    }
-    if ($("#cont-kpi-gastos")) $("#cont-kpi-gastos").textContent = formatCOP(res.gastos);
-    if ($("#cont-note-gastos")) {
-      $("#cont-note-gastos").textContent = `${res.countGastos} mov. · Efectivo: ${formatCOP(res.gastosEfectivo)} · Bancos: ${formatCOP(res.gastosBancos)}`;
-    }
-    if ($("#cont-kpi-balance")) {
-      $("#cont-kpi-balance").textContent = formatCOP(res.balance);
-      $("#cont-kpi-balance").className = `stat-value num ${res.balance >= 0 ? "text-income" : "text-expense"}`;
+      $("#cont-note-ingresos").textContent = `${resPeriodo.countIngresos} ingresos · Efectivo: ${formatCOP(resPeriodo.ingresosEfectivo)} · Bancos: ${formatCOP(resPeriodo.ingresosBancos)}`;
     }
 
+    // Indicador 2: Gastos
+    if ($("#cont-kpi-gastos")) {
+      $("#cont-kpi-gastos").textContent = formatCOP(resPeriodo.gastos);
+    }
+    if ($("#cont-note-gastos")) {
+      $("#cont-note-gastos").textContent = `${resPeriodo.countGastos} egresos · Operativos: ${formatCOP(resPeriodo.gastosOperativos)} · Compras inv.: ${formatCOP(resPeriodo.comprasInventario)}`;
+    }
+
+    // Indicador 3: Resultado del período
+    if ($("#cont-kpi-balance")) {
+      const sign = resPeriodo.resultadoPeriodo > 0 ? "+ " : "";
+      $("#cont-kpi-balance").textContent = `${sign}${formatCOP(resPeriodo.resultadoPeriodo)}`;
+      $("#cont-kpi-balance").className = `stat-value num ${resPeriodo.resultadoPeriodo >= 0 ? "text-income" : "text-expense"}`;
+    }
+    if ($("#cont-note-balance")) {
+      $("#cont-note-balance").textContent =
+        resPeriodo.resultadoPeriodo >= 0
+          ? "Resultado positivo (ingresos − gastos)"
+          : "Resultado negativo (gastos superan ingresos)";
+    }
+
+    // Indicador 4: Saldo de efectivo en caja y Saldo de bancos (por separado, sin mezclar)
+    const arqueo = cajaAbierta ? calcularArqueoCaja(cajaAbierta, ventas) : null;
+    if ($("#cont-kpi-efectivo-caja")) {
+      $("#cont-kpi-efectivo-caja").textContent = arqueo
+        ? formatCOP(arqueo.efectivoEsperado)
+        : "$ 0 (Caja cerrada)";
+    }
+    if ($("#cont-kpi-bancos")) {
+      $("#cont-kpi-bancos").textContent = resGlobal.tieneDatosBancarios
+        ? formatCOP(resGlobal.saldoBancos)
+        : "Sin datos bancarios registrados";
+    }
+    if ($("#cont-note-por-cobrar")) {
+      $("#cont-note-por-cobrar").textContent = `Cuentas por cobrar (saldos pendientes): ${formatCOP(resGlobal.cuentasPorCobrar)}`;
+    }
+
+    // Tabla de Historial de Movimientos Financieros (9 columnas + acción de detalle/reversión)
     const tbody = root.querySelector("#tabla-movimientos tbody");
     if (!tbody) return;
 
-    const filtroTipo = $("#cont-filtro-tipo")?.value || "Todos";
-    const filtroMetodo = $("#cont-filtro-metodo")?.value || "Todos";
-
-    const filtrados = movimientos.filter((m) => {
-      if (m.anulado) return false;
-      if (filtroTipo === "Ingresos" && m.tipo !== TIPOS_CONTABLE.INGRESO) return false;
-      if (filtroTipo === "Gastos" && m.tipo !== TIPOS_CONTABLE.GASTO) return false;
-      if (filtroMetodo !== "Todos" && (m.metodoPago || "Efectivo") !== filtroMetodo) return false;
-      return true;
+    const filtrados = filtrarMovimientosContables(movimientos, {
+      tipo: $("#cont-filtro-tipo")?.value || "Todos",
+      categoria: $("#cont-filtro-categoria")?.value || "Todas",
+      metodoPago: $("#cont-filtro-metodo")?.value || "Todos",
+      usuario: $("#cont-filtro-usuario")?.value || "Todos",
+      desde,
+      hasta,
+      busqueda: $("#cont-buscar")?.value || ""
     });
+    ultimosFiltrados = filtrados;
+
+    if ($("#cont-historial-count")) {
+      $("#cont-historial-count").textContent = `${filtrados.length} movimientos`;
+    }
 
     tbody.innerHTML = filtrados.length
       ? filtrados
           .map((m) => {
             const esIng = m.tipo === TIPOS_CONTABLE.INGRESO;
-            const metodoInfo = `${escapeHtml(m.metodoPago || "Efectivo")}${m.afectaCajaFisica ? " · Caja física" : ""}`;
+            const esGas = m.tipo === TIPOS_CONTABLE.GASTO;
+            const esTras = m.tipo === TIPOS_CONTABLE.TRASLADO;
+            const revertido = Boolean(m.anulado || m.estado === "Revertido");
+            const estadoTxt = revertido ? "Revertido" : m.estado || "Confirmado";
+            const badgeTipoCls = esIng ? "badge-success" : esGas ? "badge-danger" : "badge-warning";
+            const badgeEstadoCls = revertido ? "badge-danger" : "badge-success";
+            const montoCls = revertido ? "text-muted" : esIng ? "text-income" : esGas ? "text-expense" : "";
+            const prefijo = esIng ? "+ " : esGas ? "− " : "⇄ ";
+            const refTexto = m.referencia || m.soporteReferencia || m.numeroVenta || m.referenciaId || "—";
+            const metodoInfo = `${escapeHtml(m.metodoPago || "Efectivo")}${m.afectaCajaFisica ? " (Caja)" : ""}`;
+
             return `
-              <tr>
-                <td>${formatShortDate(m.fecha)}</td>
-                <td><span class="badge ${esIng ? "badge-success" : "badge-danger"}">${escapeHtml(m.tipo)}</span></td>
+              <tr style="${revertido ? "opacity:0.65" : ""}">
+                <td>${formatShortDate(m.fechaEfectiva || m.fecha)}</td>
+                <td><span class="badge ${badgeTipoCls}">${escapeHtml(m.tipo)}</span></td>
                 <td>${escapeHtml(m.categoria)}</td>
                 <td>
-                  ${escapeHtml(m.concepto)}
-                  ${m.nota ? `<br><small class="text-muted">${escapeHtml(m.nota)}</small>` : ""}
+                  <b>${escapeHtml(m.concepto)}</b>
+                  ${m.clienteRelacionado ? `<br><small class="text-muted">Cliente: ${escapeHtml(m.clienteRelacionado)}</small>` : ""}
+                  ${m.proveedor ? `<br><small class="text-muted">Proveedor: ${escapeHtml(m.proveedor)}</small>` : ""}
+                  ${m.pedidoRelacionado ? `<br><small class="text-muted">Pedido: ${escapeHtml(m.pedidoRelacionado)}${m.saldoPendientePedido > 0 ? ` · Saldo pend.: ${formatCOP(m.saldoPendientePedido)}` : ""}</small>` : ""}
                 </td>
                 <td><span class="badge">${metodoInfo}</span></td>
-                <td>${escapeHtml(m.soporteReferencia || m.referenciaId || "—")}</td>
-                <td class="num ${esIng ? "text-income" : "text-expense"}">${esIng ? "+ " : "− "}${formatCOP(m.monto)}</td>
-                <td>${escapeHtml(m.usuario)}</td>
+                <td>${escapeHtml(refTexto)}</td>
+                <td class="num ${montoCls}"><b>${prefijo}${formatCOP(m.valor ?? m.monto)}</b></td>
+                <td>${escapeHtml(m.responsable || m.usuario || "—")}</td>
+                <td><span class="badge ${badgeEstadoCls}">${escapeHtml(estadoTxt)}</span></td>
+                <td class="text-right" style="white-space:nowrap">
+                  <button type="button" class="btn btn-outline" style="padding:.22rem .55rem; font-size:.76rem" data-ver-detalle-cont="${escapeHtml(m.id)}">Detalle</button>
+                </td>
               </tr>
             `;
           })
           .join("")
-      : `<tr><td colspan="8" style="text-align:center; padding:1.5rem" class="text-muted">No hay movimientos financieros registrados.</td></tr>`;
+      : `<tr><td colspan="10" style="text-align:center; padding:1.5rem" class="text-muted">No hay movimientos financieros que coincidan con los filtros seleccionados.</td></tr>`;
+
+    // Renderizar las 3 tablas de Informes Financieros de Contabilidad (Sección 10)
+    const tbInfIng = $("#cont-informe-ingresos");
+    if (tbInfIng) {
+      const filasCatIng = informe.ingresosPorCategoria.map(
+        (c) => `<tr><td>Categoría: <b>${escapeHtml(c.nombre)}</b></td><td class="num">${c.movimientos}</td><td class="num text-income">+ ${formatCOP(c.total)}</td><td class="num">${c.porcentaje}%</td></tr>`
+      );
+      const filasMetIng = informe.ingresosPorMetodo.map(
+        (c) => `<tr><td>Medio: <span class="badge">${escapeHtml(c.nombre)}</span></td><td class="num">${c.movimientos}</td><td class="num text-income">+ ${formatCOP(c.total)}</td><td class="num">${c.porcentaje}%</td></tr>`
+      );
+      const todasIng = [...filasCatIng, ...filasMetIng];
+      tbInfIng.innerHTML = todasIng.length
+        ? todasIng.join("")
+        : `<tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">Sin ingresos en el período seleccionado.</td></tr>`;
+    }
+
+    const tbInfGas = $("#cont-informe-gastos");
+    if (tbInfGas) {
+      const filasCatGas = informe.gastosPorCategoria.map(
+        (c) => `<tr><td>Categoría: <b>${escapeHtml(c.nombre)}</b></td><td class="num">${c.movimientos}</td><td class="num text-expense">− ${formatCOP(c.total)}</td><td class="num">${c.porcentaje}%</td></tr>`
+      );
+      const filasMetGas = informe.gastosPorMetodo.map(
+        (c) => `<tr><td>Medio: <span class="badge">${escapeHtml(c.nombre)}</span></td><td class="num">${c.movimientos}</td><td class="num text-expense">− ${formatCOP(c.total)}</td><td class="num">${c.porcentaje}%</td></tr>`
+      );
+      const todasGas = [...filasCatGas, ...filasMetGas];
+      tbInfGas.innerHTML = todasGas.length
+        ? todasGas.join("")
+        : `<tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">Sin gastos en el período seleccionado.</td></tr>`;
+    }
+
+    const tbEvol = $("#cont-informe-evolucion");
+    if (tbEvol) {
+      tbEvol.innerHTML = informe.evolucionDiaria.length
+        ? informe.evolucionDiaria
+            .map(
+              (d) => `
+                <tr>
+                  <td><b>${escapeHtml(d.fecha)}</b></td>
+                  <td class="num text-income">+ ${formatCOP(d.ingresos)}</td>
+                  <td class="num text-expense">− ${formatCOP(d.gastos)}</td>
+                  <td class="num ${d.resultado >= 0 ? "text-income" : "text-expense"}"><b>${d.resultado > 0 ? "+ " : ""}${formatCOP(d.resultado)}</b></td>
+                </tr>
+              `
+            )
+            .join("")
+        : `<tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">Sin movimientos en el período seleccionado.</td></tr>`;
+    }
   }
 
-  $("#cont-filtro-tipo")?.addEventListener("change", renderContabilidad);
-  $("#cont-filtro-metodo")?.addEventListener("change", renderContabilidad);
+  function abrirModalDetalleMovimiento(mov) {
+    const modal = $("#modal-detalle-contable");
+    const body = $("#detalle-contable-body");
+    const formRev = $("#form-revertir-contable");
+    const errRev = $("#rev-error");
+    if (!modal || !body) return;
+    if (errRev) errRev.classList.add("hidden");
+
+    const revertido = Boolean(mov.anulado || mov.estado === "Revertido");
+    const estadoTxt = revertido ? "Revertido" : mov.estado || "Confirmado";
+
+    body.innerHTML = `
+      <div class="summary-row"><span>Identificador:</span><b>${escapeHtml(mov.id)}</b></div>
+      <div class="summary-row"><span>Tipo y categoría:</span><span><b>${escapeHtml(mov.tipo)}</b> · ${escapeHtml(mov.categoria)}</span></div>
+      <div class="summary-row"><span>Concepto:</span><b>${escapeHtml(mov.concepto)}</b></div>
+      <div class="summary-row"><span>Valor:</span><b class="num">${formatCOP(mov.valor ?? mov.monto)}</b></div>
+      <div class="summary-row"><span>Fecha efectiva del movimiento:</span><span>${escapeHtml(mov.fechaEfectiva || formatShortDate(mov.fecha))}</span></div>
+      <div class="summary-row"><span>Fecha y hora de registro:</span><span>${formatDateTime(mov.fechaRegistro || mov.fecha)}</span></div>
+      <div class="summary-row"><span>Método de pago:</span><span>${escapeHtml(mov.metodoPago || "Efectivo")}${mov.afectaCajaFisica ? ` (Afectó caja física: ${escapeHtml(mov.cajaId || "Sí")})` : " (No afecta caja física)"}</span></div>
+      ${mov.clienteRelacionado ? `<div class="summary-row"><span>Cliente relacionado:</span><span>${escapeHtml(mov.clienteRelacionado)}</span></div>` : ""}
+      ${mov.proveedor ? `<div class="summary-row"><span>Proveedor:</span><span>${escapeHtml(mov.proveedor)}</span></div>` : ""}
+      ${mov.pedidoRelacionado ? `<div class="summary-row"><span>Pedido / Instalación:</span><span>${escapeHtml(mov.pedidoRelacionado)}${mov.saldoPendientePedido > 0 ? ` (Saldo pendiente: ${formatCOP(mov.saldoPendientePedido)})` : ""}</span></div>` : ""}
+      <div class="summary-row"><span>Referencia / Comprobante:</span><span>${escapeHtml(mov.referencia || mov.soporteReferencia || mov.numeroVenta || "—")}</span></div>
+      <div class="summary-row"><span>Responsable del registro:</span><span>${escapeHtml(mov.responsable || mov.usuario || "—")}</span></div>
+      <div class="summary-row"><span>Estado actual:</span><span class="badge ${revertido ? "badge-danger" : "badge-success"}">${escapeHtml(estadoTxt)}</span></div>
+      <div class="summary-row"><span>Observaciones:</span><span>${escapeHtml(mov.observaciones || mov.nota || "Sin observaciones")}</span></div>
+      ${
+        revertido
+          ? `
+            <div class="summary-row"><span>Motivo de reversión:</span><span class="text-expense">${escapeHtml(mov.motivoReversion || "Ajuste autorizado")}</span></div>
+            <div class="summary-row"><span>Revertido por:</span><span>${escapeHtml(mov.revertidoPor || "Administrador")} (${formatDateTime(mov.fechaReversion)})</span></div>
+          `
+          : ""
+      }
+    `;
+
+    const puedeRevertir =
+      hasPermission("contabilidad.revertir", getCurrentUser()) &&
+      !revertido &&
+      mov.origen !== "Venta POS";
+
+    if (formRev) {
+      formRev.classList.toggle("hidden", !puedeRevertir);
+      if ($("#rev-movimiento-id")) $("#rev-movimiento-id").value = mov.id;
+      if ($("#rev-motivo")) $("#rev-motivo").value = "";
+    }
+
+    modal.classList.add("is-open");
+  }
+
+  ["#cont-buscar", "#cont-filtro-tipo", "#cont-filtro-categoria", "#cont-filtro-metodo", "#cont-filtro-usuario", "#cont-desde", "#cont-hasta"].forEach(
+    (sel) => {
+      $(sel)?.addEventListener("input", () => {
+        if ((sel === "#cont-desde" || sel === "#cont-hasta") && $("#cont-periodo-informe")) {
+          $("#cont-periodo-informe").value = "personalizado";
+        }
+        renderContabilidad();
+      });
+      $(sel)?.addEventListener("change", () => {
+        if ((sel === "#cont-desde" || sel === "#cont-hasta") && $("#cont-periodo-informe")) {
+          $("#cont-periodo-informe").value = "personalizado";
+        }
+        renderContabilidad();
+      });
+    }
+  );
+
+  root.querySelector("#tabla-movimientos")?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-ver-detalle-cont]");
+    if (!btn) return;
+    const mov = movimientos.find((m) => m.id === btn.dataset.verDetalleCont);
+    if (mov) abrirModalDetalleMovimiento(mov);
+  });
+
+  $("#form-revertir-contable")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errEl = $("#rev-error");
+    if (errEl) errEl.classList.add("hidden");
+    try {
+      const movId = $("#rev-movimiento-id")?.value;
+      const motivo = $("#rev-motivo")?.value;
+      const rev = await revertirMovimientoContable({ movimientoId: movId, motivo }, getCurrentUser());
+      $("#modal-detalle-contable")?.classList.remove("is-open");
+      showFeedback(`Movimiento "${rev.concepto}" revertido correctamente con registro de auditoría.`);
+    } catch (err) {
+      if (errEl) {
+        errEl.textContent = err.message;
+        errEl.classList.remove("hidden");
+      }
+    }
+  });
 
   $("#panel-ingreso")?.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -453,17 +705,24 @@ export function mountContabilidadView(root) {
           concepto: $("#ing-concepto")?.value,
           categoria: $("#ing-categoria")?.value,
           monto: $("#ing-monto")?.value,
-          fecha: $("#ing-fecha")?.value,
+          fechaEfectiva: $("#ing-fecha")?.value,
           metodoPago: $("#ing-metodo")?.value || "Efectivo",
-          soporteReferencia: $("#ing-soporte")?.value || "",
+          clienteRelacionado: $("#ing-cliente")?.value || "",
+          pedidoRelacionado: $("#ing-pedido")?.value || "",
+          totalPedido: $("#ing-total-pedido")?.value || 0,
+          referencia: $("#ing-soporte")?.value || "",
           afectaCajaFisica: Boolean($("#ing-afecta-caja")?.checked),
-          nota: $("#ing-nota")?.value
+          observaciones: $("#ing-nota")?.value || ""
         },
         getCurrentUser()
       );
       $("#panel-ingreso").reset();
       if ($("#ing-fecha")) $("#ing-fecha").value = hoyIso;
-      showFeedback(`Ingreso registrado correctamente por ${formatCOP(mov.monto)}.`);
+      if ($("#ing-responsable")) $("#ing-responsable").value = currentUser.name || currentUser.email;
+      sincronizarVisibilidadCajaEfectivo();
+      showFeedback(
+        `Ingreso registrado correctamente: ${mov.concepto} por ${formatCOP(mov.monto)}${mov.saldoPendientePedido > 0 ? ` (Saldo pendiente del pedido: ${formatCOP(mov.saldoPendientePedido)})` : ""}.`
+      );
     } catch (err) {
       showFeedback(err.message, true);
     }
@@ -478,28 +737,79 @@ export function mountContabilidadView(root) {
           concepto: $("#gas-concepto")?.value,
           categoria: $("#gas-categoria")?.value,
           monto: $("#gas-monto")?.value,
-          fecha: $("#gas-fecha")?.value,
+          fechaEfectiva: $("#gas-fecha")?.value,
           metodoPago: $("#gas-metodo")?.value || "Efectivo",
-          soporteReferencia: $("#gas-soporte")?.value || "",
+          proveedor: $("#gas-proveedor")?.value || "",
+          referencia: $("#gas-soporte")?.value || "",
           afectaCajaFisica: Boolean($("#gas-afecta-caja")?.checked),
-          nota: $("#gas-nota")?.value
+          observaciones: $("#gas-nota")?.value || ""
         },
         getCurrentUser()
       );
       $("#panel-gasto").reset();
       if ($("#gas-fecha")) $("#gas-fecha").value = hoyIso;
-      showFeedback(`Gasto registrado correctamente por ${formatCOP(mov.monto)}.`);
+      if ($("#gas-responsable")) $("#gas-responsable").value = currentUser.name || currentUser.email;
+      sincronizarVisibilidadCajaEfectivo();
+      showFeedback(`Gasto registrado correctamente: ${mov.concepto} por ${formatCOP(mov.monto)}.`);
     } catch (err) {
       showFeedback(err.message, true);
     }
   });
 
-  const unsub = watchMovimientosContables((lista) => {
+  $("#panel-traslado")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      const tr = await registrarTrasladoInterno(
+        {
+          cuentaOrigen: $("#tras-origen")?.value,
+          cuentaDestino: $("#tras-destino")?.value,
+          monto: $("#tras-monto")?.value,
+          fecha: $("#tras-fecha")?.value,
+          referencia: $("#tras-referencia")?.value || "",
+          observaciones: $("#tras-nota")?.value || "",
+          afectaCajaFisica: Boolean($("#tras-afecta-caja")?.checked)
+        },
+        getCurrentUser()
+      );
+      $("#panel-traslado").reset();
+      if ($("#tras-fecha")) $("#tras-fecha").value = hoyIso;
+      showFeedback(`Traslado interno registrado: ${tr.concepto} por ${formatCOP(tr.monto)}.`);
+    } catch (err) {
+      showFeedback(err.message, true);
+    }
+  });
+
+  $("#btn-cont-exportar-csv")?.addEventListener("click", () => {
+    const csv = exportarContabilidadCSV(ultimosFiltrados);
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `contabilidad-movimientos-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  const u1 = watchMovimientosContables((lista) => {
     movimientos = lista;
     renderContabilidad();
   });
+  const u2 = watchCajas(({ cajaAbierta: c }) => {
+    cajaAbierta = c;
+    renderContabilidad();
+  });
+  const u3 = watchVentas((lista) => {
+    ventas = lista;
+    renderContabilidad();
+  });
 
-  return () => unsub();
+  return () => {
+    u1();
+    u2();
+    u3();
+  };
 }
 
 // ---------------------------------------------------------------------------

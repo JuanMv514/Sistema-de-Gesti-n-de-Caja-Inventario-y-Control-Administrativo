@@ -1180,163 +1180,335 @@
       </div>
   </template>
   <template id="tpl-contabilidad">
-      <!-- VISTA: Contabilidad Básica (Sección 8 · Ingresos, gastos, flujo efectivo vs. bancos y resultados) -->
+      <!-- VISTA: Contabilidad Básica (Secciones 1 a 16 · Control de ingresos, gastos, efectivo/bancos, historial e informes) -->
       <div class="view" data-view="contabilidad">
 
-        <div id="cont-feedback" class="alert alert-info hidden" role="status" style="margin-bottom:1rem"></div>
-
-        <div class="grid grid-3" style="margin-bottom:1.25rem">
-          <div class="card stat income">
-            <div class="stat-label">Ingresos registrados</div>
-            <p class="stat-value num" id="cont-kpi-ingresos">$ 0</p>
-            <span class="stat-note" id="cont-note-ingresos">0 movimientos · Efectivo: $ 0</span>
+        <!-- Cabecera y selector de período para el Resumen e Informes Financieros (Sección 10) -->
+        <div class="page-header">
+          <div>
+            <h2>Control administrativo de ingresos y gastos</h2>
+            <p class="text-muted" style="margin:.15rem 0 0; font-size:.86rem">Registro claro del dinero que entra, dinero que sale, efectivo en caja y movimientos bancarios</p>
           </div>
-          <div class="card stat expense">
-            <div class="stat-label">Gastos registrados</div>
-            <p class="stat-value num" id="cont-kpi-gastos">$ 0</p>
-            <span class="stat-note" id="cont-note-gastos">0 movimientos · Efectivo: $ 0</span>
-          </div>
-          <div class="card stat">
-            <div class="stat-label">Resultado del período (Ingresos − Gastos)</div>
-            <p class="stat-value num" id="cont-kpi-balance">$ 0</p>
-            <span class="stat-note" id="cont-note-balance">Flujo neto acumulado</span>
+          <div class="page-actions" style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:center">
+            <select class="select" id="cont-periodo-informe" style="width:auto" aria-label="Período financiero">
+              <option value="todos">Todo el historial</option>
+              <option value="hoy">Hoy</option>
+              <option value="semana">Esta semana</option>
+              <option value="mes">Este mes</option>
+              <option value="anio">Este año</option>
+              <option value="personalizado">Período personalizado</option>
+            </select>
+            <button type="button" class="btn btn-outline" id="btn-cont-exportar-csv">Exportar CSV</button>
+            <button type="button" class="btn btn-outline" id="btn-imprimir">Imprimir informe</button>
           </div>
         </div>
 
-        <!-- Panel superior: alternar entre registrar ingreso y gasto -->
+        <div id="cont-feedback" class="alert alert-info hidden" role="status" style="margin-bottom:1rem"></div>
+
+        <!-- 4 Indicadores Financieros Superiores (Sección 3 y Sección 14) -->
+        <div class="grid grid-4" style="margin-bottom:1.25rem">
+          <!-- Indicador 1: Ingresos -->
+          <div class="card stat income">
+            <div class="stat-label">1. Ingresos (Dinero que entra)</div>
+            <p class="stat-value num" id="cont-kpi-ingresos">$ 0</p>
+            <span class="stat-note" id="cont-note-ingresos">0 movimientos confirmados</span>
+          </div>
+
+          <!-- Indicador 2: Gastos -->
+          <div class="card stat expense">
+            <div class="stat-label">2. Gastos (Dinero que sale)</div>
+            <p class="stat-value num" id="cont-kpi-gastos">$ 0</p>
+            <span class="stat-note" id="cont-note-gastos">0 egresos registrados</span>
+          </div>
+
+          <!-- Indicador 3: Resultado del período -->
+          <div class="card stat">
+            <div class="stat-label">3. Resultado del período</div>
+            <p class="stat-value num" id="cont-kpi-balance">$ 0</p>
+            <span class="stat-note" id="cont-note-balance">Ingresos − gastos (resultado contable)</span>
+          </div>
+
+          <!-- Indicador 4: Saldo de efectivo y bancos (por separado) -->
+          <div class="card stat">
+            <div class="stat-label">4. Efectivo disponible y Bancos</div>
+            <div style="margin-top:.25rem; font-size:.88rem; display:flex; flex-direction:column; gap:.25rem">
+              <div style="display:flex; justify-content:space-between">
+                <span class="text-muted">Efectivo en caja:</span>
+                <b class="num" id="cont-kpi-efectivo-caja">$ 0</b>
+              </div>
+              <div style="display:flex; justify-content:space-between">
+                <span class="text-muted">Saldo en bancos:</span>
+                <b class="num" id="cont-kpi-bancos">Sin datos bancarios</b>
+              </div>
+            </div>
+            <span class="stat-note" id="cont-note-por-cobrar">Por cobrar (saldos pendientes): $ 0</span>
+          </div>
+        </div>
+
+        <!-- Formulario para registrar movimientos: Ingresos, Gastos y Traslados internos (Secciones 4, 5 y 6) -->
         <section class="card">
           <div class="card-body">
             <input class="tabs-input" type="radio" name="tipo-mov" id="tab-ingreso" checked>
             <input class="tabs-input" type="radio" name="tipo-mov" id="tab-gasto">
+            <input class="tabs-input" type="radio" name="tipo-mov" id="tab-traslado">
             <div class="tabs" role="tablist">
-              <label class="tab" for="tab-ingreso" role="tab">Registrar Ingreso</label>
-              <label class="tab" for="tab-gasto" role="tab">Registrar Gasto</label>
+              <label class="tab" for="tab-ingreso" role="tab">Registrar Ingreso (Dinero que entra)</label>
+              <label class="tab" for="tab-gasto" role="tab">Registrar Gasto (Dinero que sale)</label>
+              <label class="tab" for="tab-traslado" role="tab">Traslado Interno (Caja ↔ Banco)</label>
             </div>
 
             <div class="tab-panels">
+              <!-- Pestaña 1: Registro de Ingresos (Sección 4) -->
               <form class="tab-panel" id="panel-ingreso">
                 <div class="form-grid">
                   <div class="field">
                     <label class="label" for="ing-concepto">Concepto *</label>
-                    <input class="input" id="ing-concepto" placeholder="Ej: Anticipo instalación ventanal" required>
+                    <input class="input" id="ing-concepto" placeholder="Ej: Anticipo instalación división de baño" required>
                   </div>
                   <div class="field">
-                    <label class="label" for="ing-categoria">Categoría *</label>
+                    <label class="label" for="ing-categoria">Categoría de ingreso *</label>
                     <select class="select" id="ing-categoria">
-                      <option value="Abonos">Abonos / Anticipos de clientes</option>
-                      <option value="Servicio de instalación">Servicio de instalación / corte</option>
-                      <option value="Otros ingresos">Otros ingresos autorizados</option>
+                      <option value="Anticipos de clientes">Anticipos de clientes</option>
+                      <option value="Abonos de instalaciones">Abonos de instalaciones</option>
+                      <option value="Ventas de mostrador">Ventas de mostrador</option>
+                      <option value="Otros ingresos">Otros ingresos</option>
                     </select>
                   </div>
                   <div class="field">
-                    <label class="label" for="ing-monto">Valor (COP) *</label>
+                    <label class="label" for="ing-monto">Valor en pesos (COP) *</label>
                     <input class="input num" id="ing-monto" type="number" min="1" step="100" placeholder="0" required>
                   </div>
                   <div class="field">
-                    <label class="label" for="ing-fecha">Fecha *</label>
+                    <label class="label" for="ing-fecha">Fecha del movimiento *</label>
                     <input class="input" id="ing-fecha" type="date" required>
                   </div>
                   <div class="field">
                     <label class="label" for="ing-metodo">Método de pago *</label>
                     <select class="select" id="ing-metodo">
                       <option value="Efectivo">Efectivo</option>
-                      <option value="Transferencia">Transferencia</option>
+                      <option value="Transferencia">Transferencia bancaria</option>
                       <option value="Tarjeta débito">Tarjeta débito</option>
-                      <option value="Tarjeta crédito">Tarjeta crédito</option>
+                      <option value="Tarjeta crédito">Tarjeta de crédito</option>
                     </select>
                   </div>
                   <div class="field">
-                    <label class="label" for="ing-soporte">Soporte documental / Comprobante</label>
-                    <input class="input" id="ing-soporte" placeholder="Ej: Recibo #108 / Ref. bancaria">
+                    <label class="label" for="ing-cliente">Cliente relacionado (opcional)</label>
+                    <input class="input" id="ing-cliente" placeholder="Nombre del cliente o empresa">
                   </div>
-                  <div class="field full">
+                  <div class="field">
+                    <label class="label" for="ing-pedido">Pedido o instalación relacionada (opcional)</label>
+                    <input class="input" id="ing-pedido" placeholder="Ej: PED-104 / Ventanal piso 2">
+                  </div>
+                  <div class="field">
+                    <label class="label" for="ing-total-pedido">Valor total del pedido (si es anticipo)</label>
+                    <input class="input num" id="ing-total-pedido" type="number" min="0" step="100" placeholder="Opcional para calcular saldo pendiente">
+                  </div>
+                  <div class="field">
+                    <label class="label" for="ing-soporte">Referencia o comprobante (opcional)</label>
+                    <input class="input" id="ing-soporte" placeholder="Ej: Recibo #210 / Comprobante transferencia">
+                  </div>
+                  <div class="field">
+                    <label class="label" for="ing-responsable">Responsable del registro</label>
+                    <input class="input" id="ing-responsable" readonly>
+                  </div>
+                  <div class="field full" id="box-ing-afecta-caja">
                     <label class="check">
                       <input type="checkbox" id="ing-afecta-caja">
-                      Ingresar este dinero en el efectivo físico de la caja abierta actual
+                      Este dinero en efectivo ingresó físicamente a la caja abierta actual
                     </label>
                   </div>
                   <div class="field full">
                     <label class="label" for="ing-nota">Observaciones</label>
-                    <textarea class="textarea" id="ing-nota" rows="2" placeholder="Detalle adicional opcional"></textarea>
+                    <textarea class="textarea" id="ing-nota" rows="2" placeholder="Detalles adicionales del ingreso"></textarea>
                   </div>
                 </div>
-                <div style="margin-top:1rem"><button type="submit" class="btn btn-primary">Guardar ingreso</button></div>
+                <div style="margin-top:1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem">
+                  <small class="text-muted">Nota: las ventas cobradas en Caja y Ventas se registran automáticamente aquí; no las registres dos veces.</small>
+                  <button type="submit" class="btn btn-primary" id="btn-guardar-ingreso">Guardar ingreso</button>
+                </div>
               </form>
 
+              <!-- Pestaña 2: Registro de Gastos (Sección 5) -->
               <form class="tab-panel" id="panel-gasto">
                 <div class="form-grid">
                   <div class="field">
                     <label class="label" for="gas-concepto">Concepto *</label>
-                    <input class="input" id="gas-concepto" placeholder="Ej: Pago de energía del local" required>
+                    <input class="input" id="gas-concepto" placeholder="Ej: Pago de factura de energía del local" required>
                   </div>
                   <div class="field">
-                    <label class="label" for="gas-categoria">Categoría *</label>
+                    <label class="label" for="gas-categoria">Categoría de gasto *</label>
                     <select class="select" id="gas-categoria">
-                      <option value="Servicios">Servicios públicos</option>
+                      <option value="Servicios públicos">Servicios públicos</option>
                       <option value="Arriendo">Arriendo</option>
-                      <option value="Compra de mercancía">Compra de mercancía / materiales</option>
-                      <option value="Transporte y fletes">Transporte y fletes</option>
-                      <option value="Nómina y mano de obra">Nómina y mano de obra</option>
+                      <option value="Transporte">Transporte</option>
+                      <option value="Nómina">Nómina</option>
+                      <option value="Mantenimiento">Mantenimiento</option>
+                      <option value="Gastos administrativos">Gastos administrativos</option>
+                      <option value="Publicidad">Publicidad</option>
                       <option value="Otros gastos">Otros gastos</option>
                     </select>
                   </div>
                   <div class="field">
-                    <label class="label" for="gas-monto">Valor (COP) *</label>
+                    <label class="label" for="gas-monto">Valor en pesos (COP) *</label>
                     <input class="input num" id="gas-monto" type="number" min="1" step="100" placeholder="0" required>
                   </div>
                   <div class="field">
-                    <label class="label" for="gas-fecha">Fecha *</label>
+                    <label class="label" for="gas-fecha">Fecha del movimiento *</label>
                     <input class="input" id="gas-fecha" type="date" required>
                   </div>
                   <div class="field">
                     <label class="label" for="gas-metodo">Método de pago *</label>
                     <select class="select" id="gas-metodo">
                       <option value="Efectivo">Efectivo</option>
-                      <option value="Transferencia">Transferencia</option>
+                      <option value="Transferencia">Transferencia bancaria</option>
                       <option value="Tarjeta débito">Tarjeta débito</option>
-                      <option value="Tarjeta crédito">Tarjeta crédito</option>
+                      <option value="Tarjeta crédito">Tarjeta de crédito</option>
                     </select>
                   </div>
                   <div class="field">
-                    <label class="label" for="gas-soporte">Soporte documental / Factura</label>
-                    <input class="input" id="gas-soporte" placeholder="Ej: Factura proveedor #8832">
+                    <label class="label" for="gas-proveedor">Proveedor (cuando corresponda)</label>
+                    <input class="input" id="gas-proveedor" placeholder="Nombre del proveedor o prestador">
                   </div>
-                  <div class="field full">
+                  <div class="field">
+                    <label class="label" for="gas-soporte">Número de factura o comprobante (opcional)</label>
+                    <input class="input" id="gas-soporte" placeholder="Ej: Factura #8832">
+                  </div>
+                  <div class="field">
+                    <label class="label" for="gas-responsable">Responsable del registro</label>
+                    <input class="input" id="gas-responsable" readonly>
+                  </div>
+                  <div class="field full" id="box-gas-afecta-caja">
                     <label class="check">
                       <input type="checkbox" id="gas-afecta-caja">
-                      Descontar este pago del efectivo físico de la caja abierta actual
+                      El dinero en efectivo salió físicamente de la caja abierta actual
                     </label>
                   </div>
                   <div class="field full">
                     <label class="label" for="gas-nota">Observaciones</label>
-                    <textarea class="textarea" id="gas-nota" rows="2" placeholder="Detalle adicional opcional"></textarea>
+                    <textarea class="textarea" id="gas-nota" rows="2" placeholder="Detalles adicionales del gasto"></textarea>
                   </div>
                 </div>
-                <div style="margin-top:1rem"><button type="submit" class="btn btn-danger">Guardar gasto</button></div>
+                <div style="margin-top:1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem">
+                  <small class="text-muted">Para compras de vidrio, aluminio o accesorios que suman stock, regístralas en el módulo <b>Inventario</b> para no duplicar el desembolso.</small>
+                  <button type="submit" class="btn btn-danger" id="btn-guardar-gasto">Guardar gasto</button>
+                </div>
+              </form>
+
+              <!-- Pestaña 3: Traslado Interno entre Caja y Bancos (Sección 6) -->
+              <form class="tab-panel" id="panel-traslado">
+                <div class="form-grid">
+                  <div class="field">
+                    <label class="label" for="tras-origen">Cuenta de origen *</label>
+                    <select class="select" id="tras-origen">
+                      <option value="Caja física">Caja física (Efectivo)</option>
+                      <option value="Cuenta bancaria">Cuenta bancaria</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="tras-destino">Cuenta de destino *</label>
+                    <select class="select" id="tras-destino">
+                      <option value="Cuenta bancaria">Cuenta bancaria</option>
+                      <option value="Caja física">Caja física (Efectivo)</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="tras-monto">Valor trasladado (COP) *</label>
+                    <input class="input num" id="tras-monto" type="number" min="1" step="100" placeholder="0" required>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="tras-fecha">Fecha *</label>
+                    <input class="input" id="tras-fecha" type="date" required>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="tras-referencia">Comprobante de consignación / retiro</label>
+                    <input class="input" id="tras-referencia" placeholder="Ej: Consignación #4510">
+                  </div>
+                  <div class="field">
+                    <label class="label" for="tras-nota">Observaciones</label>
+                    <input class="input" id="tras-nota" placeholder="Ej: Consignación efectivo del turno">
+                  </div>
+                  <div class="field full">
+                    <label class="check">
+                      <input type="checkbox" id="tras-afecta-caja" checked>
+                      Reflejar esta entrada/salida de efectivo en la caja abierta actual
+                    </label>
+                  </div>
+                </div>
+                <div style="margin-top:1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem">
+                  <small class="text-muted">Los traslados entre cuentas propias actualizan caja y bancos sin sumarse como ingreso ni como gasto.</small>
+                  <button type="submit" class="btn btn-outline">Registrar traslado interno</button>
+                </div>
               </form>
             </div>
           </div>
         </section>
 
-        <!-- Tabla central: historial de movimientos -->
+        <!-- Historial de movimientos financieros con filtros completos y buscador (Sección 9) -->
         <section class="card" style="margin-top:1.25rem">
-          <div class="card-header">
+          <div class="card-header" style="flex-wrap:wrap; gap:.75rem">
             <h3>Historial de movimientos financieros</h3>
-            <div style="display:flex; gap:.5rem; flex-wrap:wrap">
-              <select class="select" id="cont-filtro-tipo" style="width:auto" aria-label="Filtrar por tipo">
-                <option value="Todos">Todos los tipos</option>
-                <option value="Ingresos">Solo Ingresos</option>
-                <option value="Gastos">Solo Gastos</option>
-              </select>
-              <select class="select" id="cont-filtro-metodo" style="width:auto" aria-label="Filtrar por método">
-                <option value="Todos">Todos los métodos</option>
-                <option value="Efectivo">Efectivo</option>
-                <option value="Transferencia">Transferencia</option>
-                <option value="Tarjeta débito">Tarjeta débito</option>
-                <option value="Tarjeta crédito">Tarjeta crédito</option>
-              </select>
+            <span class="badge" id="cont-historial-count">0 movimientos</span>
+          </div>
+
+          <div class="card-body" style="padding-bottom:.5rem; border-bottom:1px solid var(--border)">
+            <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(145px, 1fr))">
+              <div class="field">
+                <label class="label" for="cont-buscar">Buscar</label>
+                <input class="input" type="search" id="cont-buscar" placeholder="Concepto, ref., venta o cliente">
+              </div>
+              <div class="field">
+                <label class="label" for="cont-filtro-tipo">Tipo</label>
+                <select class="select" id="cont-filtro-tipo">
+                  <option value="Todos">Todos los movimientos</option>
+                  <option value="Ingresos">Ingresos</option>
+                  <option value="Gastos">Gastos</option>
+                  <option value="Traslado interno">Traslados internos</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label" for="cont-filtro-categoria">Categoría</label>
+                <select class="select" id="cont-filtro-categoria">
+                  <option value="Todas">Todas las categorías</option>
+                  <option value="Ventas de mostrador">Ventas de mostrador</option>
+                  <option value="Anticipos de clientes">Anticipos de clientes</option>
+                  <option value="Abonos de instalaciones">Abonos de instalaciones</option>
+                  <option value="Otros ingresos">Otros ingresos</option>
+                  <option value="Servicios públicos">Servicios públicos</option>
+                  <option value="Arriendo">Arriendo</option>
+                  <option value="Transporte">Transporte</option>
+                  <option value="Nómina">Nómina</option>
+                  <option value="Mantenimiento">Mantenimiento</option>
+                  <option value="Gastos administrativos">Gastos administrativos</option>
+                  <option value="Publicidad">Publicidad</option>
+                  <option value="Compra de mercancía">Compra de mercancía</option>
+                  <option value="Otros gastos">Otros gastos</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label" for="cont-filtro-metodo">Método de pago</label>
+                <select class="select" id="cont-filtro-metodo">
+                  <option value="Todos">Todos</option>
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Transferencia">Transferencia</option>
+                  <option value="Tarjeta débito">Tarjeta débito</option>
+                  <option value="Tarjeta crédito">Tarjeta crédito</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label" for="cont-filtro-usuario">Responsable</label>
+                <input class="input" id="cont-filtro-usuario" placeholder="Todos">
+              </div>
+              <div class="field">
+                <label class="label" for="cont-desde">Fecha inicial</label>
+                <input class="input" id="cont-desde" type="date">
+              </div>
+              <div class="field">
+                <label class="label" for="cont-hasta">Fecha final</label>
+                <input class="input" id="cont-hasta" type="date">
+              </div>
             </div>
           </div>
+
           <div class="table-wrap">
             <table class="table" id="tabla-movimientos">
               <thead>
@@ -1345,18 +1517,98 @@
                   <th>Tipo</th>
                   <th>Categoría</th>
                   <th>Concepto</th>
-                  <th>Método / Caja</th>
-                  <th>Soporte</th>
-                  <th class="num">Monto</th>
+                  <th>Método de pago</th>
+                  <th>Referencia</th>
+                  <th class="num">Valor</th>
                   <th>Responsable</th>
+                  <th>Estado</th>
+                  <th class="text-right">Acción</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td colspan="8" class="text-muted" style="text-align:center; padding:1.5rem">No hay movimientos financieros registrados.</td></tr>
+                <tr><td colspan="10" class="text-muted" style="text-align:center; padding:1.5rem">No hay movimientos financieros registrados.</td></tr>
               </tbody>
             </table>
           </div>
         </section>
+
+        <!-- Informes Financieros de Contabilidad (Sección 10) -->
+        <div class="grid grid-2" style="margin-top:1.25rem">
+          <section class="card">
+            <div class="card-header">
+              <h3>Ingresos por categoría y método de pago</h3>
+              <span class="badge badge-success">De dónde provienen los ingresos</span>
+            </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Clasificación</th><th class="num">Movimientos</th><th class="num">Total</th><th class="num">%</th></tr></thead>
+                <tbody id="cont-informe-ingresos">
+                  <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">Sin ingresos en el período seleccionado.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header">
+              <h3>Gastos por categoría y método de pago</h3>
+              <span class="badge badge-danger">En qué se gasta el dinero</span>
+            </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Clasificación</th><th class="num">Movimientos</th><th class="num">Total</th><th class="num">%</th></tr></thead>
+                <tbody id="cont-informe-gastos">
+                  <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">Sin gastos en el período seleccionado.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <section class="card" style="margin-top:1.25rem">
+          <div class="card-header">
+            <h3>Evolución de ingresos, gastos y resultado por fecha</h3>
+            <span class="badge">Período activo</span>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th>Fecha</th><th class="num">Dinero que entró (Ingresos)</th><th class="num">Dinero que salió (Gastos)</th><th class="num">Resultado del día</th></tr></thead>
+              <tbody id="cont-informe-evolucion">
+                <tr><td colspan="4" class="text-muted" style="text-align:center; padding:1.25rem">Sin movimientos en el período seleccionado.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Modal de Detalle de Movimiento y Reversión Autorizada (Sección 9) -->
+        <div class="modal-overlay" id="modal-detalle-contable" role="dialog" aria-modal="true" aria-labelledby="titulo-detalle-contable">
+          <div class="modal">
+            <div class="modal-header">
+              <h3 id="titulo-detalle-contable">Detalle del movimiento financiero</h3>
+              <a class="modal-close" href="#" aria-label="Cerrar">×</a>
+            </div>
+            <div class="modal-body">
+              <div id="detalle-contable-body" class="summary"></div>
+
+              <form id="form-revertir-contable" class="hidden" style="margin-top:1rem; padding-top:.85rem; border-top:1px solid var(--border)">
+                <input type="hidden" id="rev-movimiento-id" value="">
+                <div class="field full">
+                  <label class="label" for="rev-motivo">Motivo de reversión o ajuste autorizado *</label>
+                  <input class="input" id="rev-motivo" placeholder="Ej: Error en valor digitado / soporte duplicado" required>
+                  <span class="help">El registro original no se eliminará; quedará marcado como Revertido con fecha y responsable.</span>
+                </div>
+                <div id="rev-error" class="alert alert-danger hidden" style="margin-top:.5rem"></div>
+                <div style="margin-top:.75rem; display:flex; justify-content:flex-end; gap:.5rem">
+                  <button type="submit" class="btn btn-danger">Confirmar reversión</button>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <a class="btn btn-outline" href="#">Cerrar</a>
+            </div>
+          </div>
+        </div>
+
       </div>
   </template>
   <template id="tpl-reportes">

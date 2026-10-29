@@ -30,6 +30,7 @@ const ROLE_PERMISSIONS = {
     "inventario.gestionar",
     "contabilidad.consultar",
     "contabilidad.gestionar",
+    "contabilidad.revertir",
     "reportes.ver",
     "usuarios.gestionar"
   ]),
