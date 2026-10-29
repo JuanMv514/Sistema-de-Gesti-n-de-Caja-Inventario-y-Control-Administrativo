@@ -1,0 +1,9 @@
+[build]
+  publish = "."
+
+# SPA: cualquier ruta devuelve index.html para que el router del cliente la resuelva
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
