@@ -3,14 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reportes | El Carmen</title>
+  <title>Consultas y Reportes | El Carmen</title>
   <link rel="stylesheet" href="../css/base.css">
   <link rel="stylesheet" href="../css/layout.css">
   <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/modules.css">
+  <link rel="stylesheet" href="../css/print.css" media="print">
 </head>
 <body>
 <div class="app">
   <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Abrir menú">
+  <input type="checkbox" id="sidebar-collapse" class="nav-toggle" aria-label="Colapsar menú">
 
   <aside class="sidebar">
     <div class="brand">
@@ -20,45 +23,103 @@
     <nav class="nav" aria-label="Principal">
       <p class="nav-title">Módulos</p>
       <ul class="nav-list">
-        <li><a class="nav-link" href="caja.html">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>Caja y Ventas</a></li>
-        <li><a class="nav-link" href="inventario.html">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg>Inventario</a></li>
-        <li><a class="nav-link" href="contabilidad.html">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Contabilidad</a></li>
-        <li><a class="nav-link active" href="reportes.html">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>Reportes</a></li>
-        <li><a class="nav-link" href="usuarios.html">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>Usuarios</a></li>
+        <li><a class="nav-link" href="caja.html" title="Caja y Ventas">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg><span class="nav-text">Caja y Ventas</span></a></li>
+        <li><a class="nav-link" href="inventario.html" title="Inventario">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg><span class="nav-text">Inventario</span></a></li>
+        <li><a class="nav-link" href="contabilidad.html" title="Contabilidad">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="nav-text">Contabilidad</span></a></li>
+        <li><a class="nav-link active" href="reportes.html" title="Reportes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg><span class="nav-text">Reportes</span></a></li>
+        <li data-role="admin"><a class="nav-link" href="usuarios.html" title="Usuarios">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg><span class="nav-text">Usuarios</span></a></li>
       </ul>
     </nav>
     <div class="sidebar-footer">
       <div class="avatar">AD</div>
-      <div class="user-meta"><strong>Administrador</strong><span>Rol: Administrador</span></div>
+      <div class="user-meta"><strong id="user-name">Administrador</strong><span id="user-role">Rol: Administrador</span></div>
       <a class="logout" href="../index.html" title="Cerrar sesión" aria-label="Cerrar sesión">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
       </a>
     </div>
   </aside>
+  <label for="nav-toggle" class="nav-backdrop" aria-hidden="true"></label>
 
   <div class="main">
     <header class="topbar">
-      <label for="nav-toggle" class="menu-btn" aria-label="Menú">
+      <label for="nav-toggle" class="menu-btn" aria-label="Abrir menú">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
       </label>
+      <label for="sidebar-collapse" class="collapse-btn" aria-label="Colapsar o expandir menú" title="Colapsar / expandir menú">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </label>
       <div class="topbar-title">
-        <h1>Reportes</h1>
-        <p>Consultas y resúmenes del negocio</p>
+        <h1>Consultas y Reportes</h1>
+        <p>Resumen de caja, contabilidad e inventario</p>
       </div>
       <span class="topbar-date">Vidrios y Aluminios El Carmen</span>
     </header>
 
     <main id="app-root">
-      <div class="card">
-        <div class="empty">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-          <h3>Módulo en diseño</h3>
-          <p>Aquí irá el diseño de Reportes cuando definamos sus requisitos.</p>
+      <!-- VISTA: Consultas y Reportes - Dashboard (se inyecta en #app-root) -->
+      <div class="view" data-view="reportes">
+        <div class="page-header">
+          <h2>Resumen general</h2>
+          <div class="page-actions">
+            <select class="select" style="width:auto" aria-label="Periodo"><option>Hoy</option><option>Esta semana</option><option>Este mes</option></select>
+            <button type="button" class="btn btn-primary" id="btn-imprimir">Imprimir / Exportar PDF</button>
+          </div>
+        </div>
+
+        <h3 class="section-title">Caja y ventas</h3>
+        <div class="grid grid-4">
+          <article class="kpi"><div class="kpi-label">Ventas del día</div><p class="kpi-value num">$ 1.100.000</p><p class="kpi-note">12 ventas</p></article>
+          <article class="kpi"><div class="kpi-label">Efectivo</div><p class="kpi-value num">$ 640.000</p><p class="kpi-note">58 % del total</p></article>
+          <article class="kpi"><div class="kpi-label">Transferencias</div><p class="kpi-value num">$ 310.000</p><p class="kpi-note">28 % del total</p></article>
+          <article class="kpi"><div class="kpi-label">Tarjeta</div><p class="kpi-value num">$ 150.000</p><p class="kpi-note">14 % del total</p></article>
+        </div>
+
+        <h3 class="section-title">Contabilidad</h3>
+        <div class="grid grid-3">
+          <article class="kpi"><div class="kpi-label">Ingresos</div><p class="kpi-value num text-income">$ 4.820.000</p><p class="kpi-note">Acumulado del mes</p></article>
+          <article class="kpi"><div class="kpi-label">Gastos</div><p class="kpi-value num text-expense">$ 2.135.000</p><p class="kpi-note">Acumulado del mes</p></article>
+          <article class="kpi"><div class="kpi-label">Balance</div><p class="kpi-value num">$ 2.685.000</p><p class="kpi-note">Ingresos − gastos</p></article>
+        </div>
+
+        <h3 class="section-title">Inventario</h3>
+        <div class="grid grid-3">
+          <article class="kpi"><div class="kpi-label">Productos registrados</div><p class="kpi-value num">128</p><p class="kpi-note">En catálogo</p></article>
+          <article class="kpi alert-kpi"><div class="kpi-label">Con stock bajo</div><p class="kpi-value num">7</p><p class="kpi-note">Requieren reposición</p></article>
+          <article class="kpi"><div class="kpi-label">Valor del inventario</div><p class="kpi-value num">$ 18.450.000</p><p class="kpi-note">A precio de venta</p></article>
+        </div>
+
+        <div class="grid grid-2" style="margin-top:1.75rem">
+          <section class="card">
+            <div class="card-header"><h3>Productos con stock bajo</h3></div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Producto</th><th class="num">Stock</th><th class="num">Mínimo</th></tr></thead>
+                <tbody>
+                  <tr><td>Cerradura para vidrio</td><td class="num">3</td><td class="num">5</td></tr>
+                  <tr><td>Perfil aluminio 1&quot;</td><td class="num">8</td><td class="num">10</td></tr>
+                  <tr><td>Silicona estructural</td><td class="num">0</td><td class="num">6</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section class="card">
+            <div class="card-header"><h3>Últimos movimientos</h3></div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Fecha</th><th>Concepto</th><th class="num">Monto</th></tr></thead>
+                <tbody>
+                  <tr><td>29/10</td><td>Venta de contado #0045</td><td class="num text-income">+ $ 206.000</td></tr>
+                  <tr><td>28/10</td><td>Pago de energía</td><td class="num text-expense">− $ 180.000</td></tr>
+                  <tr><td>28/10</td><td>Abono cliente ventanal</td><td class="num text-income">+ $ 500.000</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
       </div>
     </main>
@@ -66,5 +127,6 @@
     <footer class="footer">© 2026 Vidrios y Aluminios El Carmen · AIMÁTIKA</footer>
   </div>
 </div>
+
 </body>
 </html>

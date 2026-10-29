@@ -3,14 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Contabilidad | El Carmen</title>
+  <title>Contabilidad Básica | El Carmen</title>
   <link rel="stylesheet" href="../css/base.css">
   <link rel="stylesheet" href="../css/layout.css">
   <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/modules.css">
+  <link rel="stylesheet" href="../css/print.css" media="print">
 </head>
 <body>
 <div class="app">
   <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Abrir menú">
+  <input type="checkbox" id="sidebar-collapse" class="nav-toggle" aria-label="Colapsar menú">
 
   <aside class="sidebar">
     <div class="brand">
@@ -20,51 +23,117 @@
     <nav class="nav" aria-label="Principal">
       <p class="nav-title">Módulos</p>
       <ul class="nav-list">
-        <li><a class="nav-link" href="caja.html">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>Caja y Ventas</a></li>
-        <li><a class="nav-link" href="inventario.html">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg>Inventario</a></li>
-        <li><a class="nav-link active" href="contabilidad.html">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Contabilidad</a></li>
-        <li><a class="nav-link" href="reportes.html">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>Reportes</a></li>
-        <li><a class="nav-link" href="usuarios.html">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>Usuarios</a></li>
+        <li><a class="nav-link" href="caja.html" title="Caja y Ventas">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg><span class="nav-text">Caja y Ventas</span></a></li>
+        <li><a class="nav-link" href="inventario.html" title="Inventario">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg><span class="nav-text">Inventario</span></a></li>
+        <li><a class="nav-link active" href="contabilidad.html" title="Contabilidad">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="nav-text">Contabilidad</span></a></li>
+        <li><a class="nav-link" href="reportes.html" title="Reportes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg><span class="nav-text">Reportes</span></a></li>
+        <li data-role="admin"><a class="nav-link" href="usuarios.html" title="Usuarios">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg><span class="nav-text">Usuarios</span></a></li>
       </ul>
     </nav>
     <div class="sidebar-footer">
       <div class="avatar">AD</div>
-      <div class="user-meta"><strong>Administrador</strong><span>Rol: Administrador</span></div>
+      <div class="user-meta"><strong id="user-name">Administrador</strong><span id="user-role">Rol: Administrador</span></div>
       <a class="logout" href="../index.html" title="Cerrar sesión" aria-label="Cerrar sesión">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
       </a>
     </div>
   </aside>
+  <label for="nav-toggle" class="nav-backdrop" aria-hidden="true"></label>
 
   <div class="main">
     <header class="topbar">
-      <label for="nav-toggle" class="menu-btn" aria-label="Menú">
+      <label for="nav-toggle" class="menu-btn" aria-label="Abrir menú">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
       </label>
+      <label for="sidebar-collapse" class="collapse-btn" aria-label="Colapsar o expandir menú" title="Colapsar / expandir menú">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </label>
       <div class="topbar-title">
-        <h1>Contabilidad</h1>
+        <h1>Contabilidad Básica</h1>
         <p>Ingresos, gastos y movimientos administrativos</p>
       </div>
       <span class="topbar-date">Vidrios y Aluminios El Carmen</span>
     </header>
 
     <main id="app-root">
-      <div class="card">
-        <div class="empty">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-          <h3>Módulo en diseño</h3>
-          <p>Aquí irá el diseño de Contabilidad cuando definamos sus requisitos.</p>
+      <!-- VISTA: Contabilidad Básica (se inyecta en #app-root) -->
+      <div class="view" data-view="contabilidad">
+
+        <div class="grid grid-3" style="margin-bottom:1.25rem">
+          <div class="card stat income"><div class="stat-label">Ingresos del mes</div><p class="stat-value num">$ 4.820.000</p><span class="stat-note">18 movimientos</span></div>
+          <div class="card stat expense"><div class="stat-label">Gastos del mes</div><p class="stat-value num">$ 2.135.000</p><span class="stat-note">11 movimientos</span></div>
+          <div class="card stat"><div class="stat-label">Balance</div><p class="stat-value num">$ 2.685.000</p><span class="stat-note">Ingresos − gastos</span></div>
         </div>
+
+        <!-- Panel superior: alternar entre registrar ingreso y gasto -->
+        <section class="card">
+          <div class="card-body">
+            <input class="tabs-input" type="radio" name="tipo-mov" id="tab-ingreso" checked>
+            <input class="tabs-input" type="radio" name="tipo-mov" id="tab-gasto">
+            <div class="tabs" role="tablist">
+              <label class="tab" for="tab-ingreso" role="tab">Registrar Ingreso</label>
+              <label class="tab" for="tab-gasto" role="tab">Registrar Gasto</label>
+            </div>
+
+            <div class="tab-panels">
+              <form class="tab-panel" id="panel-ingreso">
+                <div class="form-grid">
+                  <div class="field"><label class="label" for="ing-concepto">Concepto</label><input class="input" id="ing-concepto" placeholder="Ej: Abono de cliente" required></div>
+                  <div class="field"><label class="label" for="ing-categoria">Categoría</label>
+                    <select class="select" id="ing-categoria"><option>Ventas</option><option>Abonos</option><option>Otros ingresos</option></select></div>
+                  <div class="field"><label class="label" for="ing-monto">Monto</label><input class="input" id="ing-monto" type="number" min="0" placeholder="0" required></div>
+                  <div class="field"><label class="label" for="ing-fecha">Fecha</label><input class="input" id="ing-fecha" type="date" required></div>
+                  <div class="field full"><label class="label" for="ing-nota">Nota</label><textarea class="textarea" id="ing-nota" rows="2" placeholder="Opcional"></textarea></div>
+                </div>
+                <div style="margin-top:1rem"><button type="submit" class="btn btn-primary">Guardar ingreso</button></div>
+              </form>
+
+              <form class="tab-panel" id="panel-gasto">
+                <div class="form-grid">
+                  <div class="field"><label class="label" for="gas-concepto">Concepto</label><input class="input" id="gas-concepto" placeholder="Ej: Pago de arriendo" required></div>
+                  <div class="field"><label class="label" for="gas-categoria">Categoría</label>
+                    <select class="select" id="gas-categoria"><option>Servicios</option><option>Arriendo</option><option>Compra de mercancía</option><option>Nómina informal</option><option>Otros gastos</option></select></div>
+                  <div class="field"><label class="label" for="gas-monto">Monto</label><input class="input" id="gas-monto" type="number" min="0" placeholder="0" required></div>
+                  <div class="field"><label class="label" for="gas-fecha">Fecha</label><input class="input" id="gas-fecha" type="date" required></div>
+                  <div class="field full"><label class="label" for="gas-nota">Nota</label><textarea class="textarea" id="gas-nota" rows="2" placeholder="Opcional"></textarea></div>
+                </div>
+                <div style="margin-top:1rem"><button type="submit" class="btn btn-danger">Guardar gasto</button></div>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tabla central: historial de movimientos (overflow-x para móviles) -->
+        <section class="card" style="margin-top:1.25rem">
+          <div class="card-header">
+            <h3>Historial de movimientos</h3>
+            <select class="select" style="width:auto" aria-label="Filtrar por tipo"><option>Todos</option><option>Ingresos</option><option>Gastos</option></select>
+          </div>
+          <div class="table-wrap">
+            <table class="table" id="tabla-movimientos">
+              <thead><tr><th>Fecha</th><th>Tipo</th><th>Categoría</th><th>Concepto</th><th class="num">Monto</th><th>Registrado por</th></tr></thead>
+              <tbody>
+                <!-- JavaScript asigna .text-income o .text-expense al monto según el tipo -->
+                <tr><td>29/10/2026</td><td><span class="badge badge-success">Ingreso</span></td><td>Ventas</td><td>Venta de contado #0045</td><td class="num text-income">+ $ 206.000</td><td>Administrador</td></tr>
+                <tr><td>28/10/2026</td><td><span class="badge badge-danger">Gasto</span></td><td>Servicios</td><td>Pago de energía</td><td class="num text-expense">− $ 180.000</td><td>Administrador</td></tr>
+                <tr><td>28/10/2026</td><td><span class="badge badge-success">Ingreso</span></td><td>Abonos</td><td>Abono cliente instalación ventanal</td><td class="num text-income">+ $ 500.000</td><td>Empleado</td></tr>
+                <tr><td>27/10/2026</td><td><span class="badge badge-danger">Gasto</span></td><td>Compra de mercancía</td><td>Perfiles de aluminio (proveedor)</td><td class="num text-expense">− $ 920.000</td><td>Administrador</td></tr>
+                <tr><td>26/10/2026</td><td><span class="badge badge-danger">Gasto</span></td><td>Arriendo</td><td>Arriendo del local</td><td class="num text-expense">− $ 800.000</td><td>Administrador</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
     </main>
 
     <footer class="footer">© 2026 Vidrios y Aluminios El Carmen · AIMÁTIKA</footer>
   </div>
 </div>
+
 </body>
 </html>
