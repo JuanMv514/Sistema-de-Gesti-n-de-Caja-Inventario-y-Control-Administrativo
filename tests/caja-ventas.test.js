@@ -1050,6 +1050,37 @@ export async function runAll25Tests() {
     assert(csvCont.includes("Constructora del Norte") && csvCont.includes("Revertido"), "El CSV contable debe exportar el historial completo");
   });
 
+  // 45. Contabilidad Básica Accesible (Secciones 6, 7, 8 y 9): Categorías y métodos simplificados para uso cotidiano
+  await step(45, "Contabilidad Accesible: Soportar nombres claros (Anticipo de cliente, Transferencia bancaria) y filtros rápidos", async () => {
+    const movClaro = await registrarMovimientoContable(
+      {
+        tipo: TIPOS_CONTABLE.INGRESO,
+        categoria: "Anticipo de cliente",
+        concepto: "Anticipo división de baño en vidrio templado",
+        monto: 110000,
+        metodoPago: "Transferencia bancaria",
+        clienteRelacionado: "Sra. Marta Gómez",
+        pedidoRelacionado: "PED-700",
+        totalPedido: 220000,
+        referencia: "NEQUI-700"
+      },
+      adminUser
+    );
+    assert(movClaro.saldoPendientePedido === 110000, "Debe calcular el saldo pendiente con la categoría 'Anticipo de cliente'");
+
+    const filtroTransf = filtrarMovimientosContables({ metodoPago: "Transferencias" });
+    assert(
+      filtroTransf.some((m) => m.id === movClaro.id),
+      "El filtro rápido 'Transferencias' debe incluir los movimientos de 'Transferencia bancaria' y 'Transferencia'"
+    );
+
+    const filtroCat = filtrarMovimientosContables({ categoria: "Anticipo de cliente" });
+    assert(
+      filtroCat.length >= 2,
+      "El filtro por 'Anticipo de cliente' debe encontrar tanto 'Anticipo de cliente' como 'Anticipos de clientes'"
+    );
+  });
+
   return results.sort((a, b) => a.num - b.num);
 }
 
