@@ -187,8 +187,45 @@ function setupEventDelegation() {
   });
 }
 
+function purgeLegacyAndDemoStorage() {
+  try {
+    if (typeof localStorage === "undefined") return;
+    const demoIds = new Set([
+      "prod-vt006",
+      "prod-vl008",
+      "prod-es004",
+      "prod-pa100",
+      "prod-rc300",
+      "prod-bh010",
+      "prod-cv001",
+      "prod-si050"
+    ]);
+    const prefixes = ["elcarmen_db_v1_", "elcarmen_real_v2_", "elcarmen_clean_v3_"];
+    for (const prefix of prefixes) {
+      const prodKey = `${prefix}productos`;
+      const rawProds = localStorage.getItem(prodKey);
+      if (!rawProds) {
+        localStorage.setItem(prodKey, "[]");
+      } else {
+        try {
+          const arr = JSON.parse(rawProds);
+          if (Array.isArray(arr) && arr.some((p) => demoIds.has(p.id))) {
+            localStorage.setItem(prodKey, JSON.stringify(arr.filter((p) => !demoIds.has(p.id))));
+          }
+        } catch {
+          localStorage.setItem(prodKey, "[]");
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+}
+
 function initApp() {
+  purgeLegacyAndDemoStorage();
   ensureSeedData();
+  purgeLegacyAndDemoStorage();
   setupEventDelegation();
   renderFirebaseConnectionBadge();
 

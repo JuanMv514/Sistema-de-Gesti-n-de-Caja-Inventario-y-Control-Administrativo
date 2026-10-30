@@ -12,8 +12,18 @@ import {
   isNetworkOffline
 } from "../firebase-config.js";
 
-const LEGACY_STORAGE_PREFIXES = ["elcarmen_db_v1_"];
-const STORAGE_PREFIX = "elcarmen_real_v2_";
+const LEGACY_STORAGE_PREFIXES = ["elcarmen_db_v1_", "elcarmen_real_v2_"];
+const STORAGE_PREFIX = "elcarmen_clean_v3_";
+const DEMO_PRODUCT_IDS = new Set([
+  "prod-vt006",
+  "prod-vl008",
+  "prod-es004",
+  "prod-pa100",
+  "prod-rc300",
+  "prod-bh010",
+  "prod-cv001",
+  "prod-si050"
+]);
 
 export const COLLECTIONS = {
   PRODUCTOS: "productos",
@@ -231,14 +241,14 @@ function getStorage() {
   if (inMemoryTestMode) return null;
   try {
     if (typeof localStorage !== "undefined") {
-      // Limpiar automáticamente cualquier dato residual de pruebas o semillas antiguas
+      // Asegurar que las claves antiguas de productos queden como arreglo vacío "[]" (y no null)
+      // para impedir que cualquier módulo en caché vuelva a sembrar INITIAL_PRODUCTOS.
       for (const oldPrefix of LEGACY_STORAGE_PREFIXES) {
-        const keysToRemove = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          if (k && k.startsWith(oldPrefix)) keysToRemove.push(k);
+        const oldProdKey = `${oldPrefix}productos`;
+        const raw = localStorage.getItem(oldProdKey);
+        if (raw && raw.includes("prod-vt006")) {
+          localStorage.setItem(oldProdKey, "[]");
         }
-        keysToRemove.forEach((k) => localStorage.removeItem(k));
       }
       return localStorage;
     }
@@ -288,6 +298,14 @@ export function ensureSeedData() {
       writeCollectionRaw(COLLECTIONS.USUARIOS, INITIAL_USUARIOS);
     }
   } else {
+    // Si hubiera quedado algún producto de demostración en el almacenamiento local, eliminarlo
+    const prodsActuales = readCollectionRaw(COLLECTIONS.PRODUCTOS);
+    if (Array.isArray(prodsActuales) && prodsActuales.some((p) => DEMO_PRODUCT_IDS.has(p.id))) {
+      writeCollectionRaw(
+        COLLECTIONS.PRODUCTOS,
+        prodsActuales.filter((p) => !DEMO_PRODUCT_IDS.has(p.id))
+      );
+    }
     if (!readCollectionRaw(COLLECTIONS.CLIENTES)) {
       writeCollectionRaw(COLLECTIONS.CLIENTES, [
         {
