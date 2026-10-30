@@ -12,7 +12,8 @@ import {
   isNetworkOffline
 } from "../firebase-config.js";
 
-const STORAGE_PREFIX = "elcarmen_db_v1_";
+const LEGACY_STORAGE_PREFIXES = ["elcarmen_db_v1_"];
+const STORAGE_PREFIX = "elcarmen_real_v2_";
 
 export const COLLECTIONS = {
   PRODUCTOS: "productos",
@@ -223,11 +224,24 @@ export const INITIAL_USUARIOS = [
 
 const listeners = new Map();
 let memoryStore = null;
+let inMemoryTestMode = false;
 const activeLocks = new Set();
 
 function getStorage() {
+  if (inMemoryTestMode) return null;
   try {
-    if (typeof localStorage !== "undefined") return localStorage;
+    if (typeof localStorage !== "undefined") {
+      // Limpiar automáticamente cualquier dato residual de pruebas o semillas antiguas
+      for (const oldPrefix of LEGACY_STORAGE_PREFIXES) {
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith(oldPrefix)) keysToRemove.push(k);
+        }
+        keysToRemove.forEach((k) => localStorage.removeItem(k));
+      }
+      return localStorage;
+    }
   } catch {
     // Entorno sin localStorage
   }
@@ -261,15 +275,43 @@ function writeCollectionRaw(colName, docs) {
   }
 }
 
+// En la aplicación real NO se inyectan productos, ventas, cajas ni movimientos ficticios.
 export function ensureSeedData() {
-  if (!readCollectionRaw(COLLECTIONS.PRODUCTOS)) {
-    writeCollectionRaw(COLLECTIONS.PRODUCTOS, INITIAL_PRODUCTOS);
-  }
-  if (!readCollectionRaw(COLLECTIONS.CLIENTES)) {
-    writeCollectionRaw(COLLECTIONS.CLIENTES, INITIAL_CLIENTES);
-  }
-  if (!readCollectionRaw(COLLECTIONS.USUARIOS)) {
-    writeCollectionRaw(COLLECTIONS.USUARIOS, INITIAL_USUARIOS);
+  if (inMemoryTestMode) {
+    if (!readCollectionRaw(COLLECTIONS.PRODUCTOS)) {
+      writeCollectionRaw(COLLECTIONS.PRODUCTOS, INITIAL_PRODUCTOS);
+    }
+    if (!readCollectionRaw(COLLECTIONS.CLIENTES)) {
+      writeCollectionRaw(COLLECTIONS.CLIENTES, INITIAL_CLIENTES);
+    }
+    if (!readCollectionRaw(COLLECTIONS.USUARIOS)) {
+      writeCollectionRaw(COLLECTIONS.USUARIOS, INITIAL_USUARIOS);
+    }
+  } else {
+    if (!readCollectionRaw(COLLECTIONS.CLIENTES)) {
+      writeCollectionRaw(COLLECTIONS.CLIENTES, [
+        {
+          id: "cli-consumidor",
+          nombre: "Consumidor Final",
+          documento: "222222222222",
+          telefono: "",
+          esConsumidorFinal: true
+        }
+      ]);
+    }
+    if (!readCollectionRaw(COLLECTIONS.USUARIOS)) {
+      writeCollectionRaw(COLLECTIONS.USUARIOS, [
+        {
+          id: "usr-admin",
+          uid: "usr-admin",
+          nombre: "Administrador",
+          email: "admin@elcarmen.com",
+          rol: "Administrador",
+          activo: true,
+          creadoEn: new Date().toISOString()
+        }
+      ]);
+    }
   }
   for (const col of Object.values(COLLECTIONS)) {
     if (!readCollectionRaw(col)) writeCollectionRaw(col, []);
@@ -278,6 +320,7 @@ export function ensureSeedData() {
 
 // Deja todas las colecciones completamente vacías (para verificar Carga inicial sin datos — Prueba 1)
 export function resetDatabaseEmpty() {
+  inMemoryTestMode = true;
   if (!memoryStore) memoryStore = {};
   for (const col of Object.values(COLLECTIONS)) {
     writeCollectionRaw(col, []);
@@ -286,14 +329,10 @@ export function resetDatabaseEmpty() {
   for (const col of Object.values(COLLECTIONS)) notifyListeners(col);
 }
 
-// Reinicia la base de datos para pruebas con el catálogo base de productos, clientes y usuarios pero 0 ventas/cajas
+// Reinicia la base de datos en memoria para la suite de pruebas sin contaminar localStorage de la app real
 export function resetDatabaseForTests() {
-  if (!memoryStore) memoryStore = {};
-  const storage = getStorage();
-  for (const col of Object.values(COLLECTIONS)) {
-    if (storage) storage.removeItem(STORAGE_PREFIX + col);
-    delete memoryStore[col];
-  }
+  inMemoryTestMode = true;
+  memoryStore = {};
   ensureSeedData();
   for (const col of Object.values(COLLECTIONS)) notifyListeners(col);
 }

@@ -519,12 +519,12 @@
 
         <!-- Estado de la caja (Abierta / Cerrada) -->
         <section class="card cash-status" id="cash-status-bar">
-          <span class="badge badge-success" id="caja-badge-estado">Caja abierta</span>
+          <span class="badge badge-warning" id="caja-badge-estado">Caja cerrada</span>
           <div class="grow meta" id="caja-meta-info">
             <span>Abierta por: <b id="caja-abierta-por">Administrador</b></span>
-            <span>Monto inicial: <b class="num" id="caja-monto-inicial">$ 200.000</b></span>
+            <span>Monto inicial: <b class="num" id="caja-monto-inicial">$ 0</b></span>
             <span>Ventas del turno: <b id="caja-ventas-turno">0</b></span>
-            <span>Efectivo esperado: <b class="num" id="caja-efectivo-esperado">$ 200.000</b></span>
+            <span>Efectivo esperado: <b class="num" id="caja-efectivo-esperado">$ 0</b></span>
           </div>
           <div class="page-actions" id="caja-status-actions">
             <a class="btn btn-outline" href="#modal-mov-caja" id="btn-abrir-mov-caja">Movimiento efectivo</a>
@@ -837,9 +837,9 @@
                 <div class="summary" style="margin:1rem 0 0; padding:.85rem 1rem; background:var(--navy-50); border:1px solid var(--border); border-radius:var(--radius-sm)">
                   <div class="summary-row"><span>Área calculada por pieza</span><b class="num" id="med-area-pieza">2 m²</b></div>
                   <div class="summary-row"><span>Área total (<span id="med-res-piezas">1</span> pza)</span><b class="num" id="med-area-resultado">2 m²</b></div>
-                  <div class="summary-row"><span>Precio del material (área × precio/m²)</span><span class="num" id="med-precio-material">$ 170.000</span></div>
+                  <div class="summary-row"><span>Precio del material (área × precio/m²)</span><span class="num" id="med-precio-material">$ 0</span></div>
                   <div class="summary-row"><span>Costos adicionales</span><span class="num" id="med-res-adicional">$ 0</span></div>
-                  <div class="summary-row total"><span>Precio final de la línea</span><span class="num" id="med-precio-final">$ 170.000</span></div>
+                  <div class="summary-row total"><span>Precio final de la línea</span><span class="num" id="med-precio-final">$ 0</span></div>
                 </div>
 
                 <p id="med-error" class="error-text hidden" style="margin:.65rem 0 0"></p>
