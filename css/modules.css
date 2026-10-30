@@ -142,3 +142,219 @@
   .pillar-main .big { font-size: 1.5rem; }
   .cart-pay-grid { grid-template-columns: 1fr; }
 }
+
+/* ---------- Contabilidad Básica Accesible (Pensada para lectura fácil y botones grandes) ---------- */
+.contab-accessible {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.contab-step-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin: 1.5rem 0 .85rem;
+  padding-bottom: .5rem;
+  border-bottom: 2px solid var(--navy-100);
+}
+.contab-step-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--navy-900);
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+.contab-step-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--navy-800);
+  color: var(--white);
+  font-size: .92rem;
+  font-weight: 800;
+}
+.contab-stat-card {
+  padding: 1.25rem 1.35rem;
+  border-left-width: 6px;
+}
+.contab-stat-card .stat-label {
+  font-size: .92rem;
+  font-weight: 700;
+  color: var(--navy-800);
+  letter-spacing: .02em;
+}
+.contab-stat-card .stat-value {
+  font-size: 1.85rem;
+  margin: .35rem 0;
+}
+.contab-stat-card .stat-sub {
+  font-size: .9rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.contab-big-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.contab-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .3rem;
+  padding: 1.1rem 1.25rem;
+  border-radius: var(--radius);
+  border: 2px solid var(--border);
+  background: var(--white);
+  color: var(--navy-900);
+  cursor: pointer;
+  text-align: left;
+  transition: transform .12s, box-shadow .12s, border-color .12s;
+  min-height: 82px;
+}
+.contab-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.contab-action-btn .action-head {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  font-size: 1.12rem;
+  font-weight: 800;
+}
+.contab-action-btn .action-desc {
+  font-size: .9rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.contab-action-btn.action-income {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+.contab-action-btn.action-income .action-head { color: #166534; }
+.contab-action-btn.action-income.active {
+  background: #15803d;
+  border-color: #15803d;
+  color: var(--white);
+  box-shadow: 0 6px 16px rgba(21, 128, 61, .25);
+}
+.contab-action-btn.action-income.active .action-head,
+.contab-action-btn.action-income.active .action-desc { color: var(--white); }
+
+.contab-action-btn.action-expense {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+.contab-action-btn.action-expense .action-head { color: #991b1b; }
+.contab-action-btn.action-expense.active {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: var(--white);
+  box-shadow: 0 6px 16px rgba(185, 28, 28, .25);
+}
+.contab-action-btn.action-expense.active .action-head,
+.contab-action-btn.action-expense.active .action-desc { color: var(--white); }
+
+.contab-action-btn.action-transfer {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+.contab-action-btn.action-transfer.active {
+  background: var(--navy-800);
+  border-color: var(--navy-800);
+  color: var(--white);
+}
+.contab-action-btn.action-transfer.active .action-head,
+.contab-action-btn.action-transfer.active .action-desc { color: var(--white); }
+
+.contab-form-accessible label {
+  font-size: .98rem;
+  font-weight: 700;
+  color: var(--navy-900);
+  margin-bottom: .35rem;
+  display: block;
+}
+.contab-form-accessible .input,
+.contab-form-accessible .select,
+.contab-form-accessible .textarea {
+  font-size: 1rem;
+  min-height: 46px;
+  padding: .65rem .85rem;
+}
+.contab-submit-btn {
+  min-height: 52px;
+  font-size: 1.08rem;
+  font-weight: 800;
+  padding: .75rem 1.75rem;
+}
+.contab-quick-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  margin-bottom: 1rem;
+}
+.contab-pill-btn {
+  min-height: 44px;
+  padding: .55rem 1.15rem;
+  font-size: .96rem;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 2px solid var(--border);
+  background: var(--white);
+  color: var(--navy-800);
+  cursor: pointer;
+}
+.contab-pill-btn:hover {
+  background: var(--navy-50);
+  border-color: var(--navy-600);
+}
+.contab-pill-btn.active {
+  background: var(--navy-800);
+  border-color: var(--navy-800);
+  color: var(--white);
+}
+.contab-table th {
+  font-size: .88rem;
+  padding: .85rem 1rem;
+}
+.contab-table td {
+  font-size: .96rem;
+  padding: .9rem 1rem;
+}
+.contab-chart-list {
+  display: grid;
+  gap: .85rem;
+}
+.contab-chart-item {
+  display: grid;
+  gap: .35rem;
+}
+.contab-chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .75rem;
+  font-size: .95rem;
+}
+.contab-chart-track {
+  height: 14px;
+  border-radius: 999px;
+  background: var(--navy-100);
+  overflow: hidden;
+}
+.contab-chart-bar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width .25s ease;
+}
+.contab-chart-bar.income { background: var(--success); }
+.contab-chart-bar.expense { background: var(--danger); }
+.contab-chart-bar.neutral { background: var(--navy-700); }
