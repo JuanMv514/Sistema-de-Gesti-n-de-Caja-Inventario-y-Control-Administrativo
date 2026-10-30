@@ -133,12 +133,34 @@ export function filtrarMovimientosContables(
       if (m.tipo !== TIPOS_CONTABLE.TRASLADO) return false;
     }
 
-    if (metodoPago !== "Todos" && (m.metodoPago || "Efectivo") !== metodoPago) {
-      return false;
+    if (metodoPago !== "Todos") {
+      const mMetodo = m.metodoPago || "Efectivo";
+      const esFiltroTransf = ["Transferencia", "Transferencia bancaria", "Transferencias"].includes(metodoPago);
+      const esMovTransf = ["Transferencia", "Transferencia bancaria"].includes(mMetodo);
+      const esFiltroTdc = ["Tarjeta crédito", "Tarjeta de crédito"].includes(metodoPago);
+      const esMovTdc = ["Tarjeta crédito", "Tarjeta de crédito"].includes(mMetodo);
+      if (esFiltroTransf) {
+        if (!esMovTransf) return false;
+      } else if (esFiltroTdc) {
+        if (!esMovTdc) return false;
+      } else if (mMetodo !== metodoPago) {
+        return false;
+      }
     }
 
-    if (categoria !== "Todas" && categoria !== "Todos" && m.categoria !== categoria) {
-      return false;
+    if (categoria !== "Todas" && categoria !== "Todos") {
+      const mCat = m.categoria || "";
+      const equivalencias = [
+        ["Venta", "Ventas de mostrador"],
+        ["Anticipo de cliente", "Anticipos de clientes"],
+        ["Abono de instalación", "Abonos de instalaciones"]
+      ];
+      const grupo = equivalencias.find((par) => par.includes(categoria));
+      if (grupo) {
+        if (!grupo.includes(mCat)) return false;
+      } else if (mCat !== categoria) {
+        return false;
+      }
     }
 
     if (usrFiltro !== "todos" && usrFiltro !== "") {
@@ -349,12 +371,23 @@ export function generarInformeFinancieroContable(
   const listaIngresos = movsPeriodo.filter((m) => m.tipo === TIPOS_CONTABLE.INGRESO);
   const listaGastos = movsPeriodo.filter((m) => m.tipo === TIPOS_CONTABLE.GASTO);
 
+  const coincideMetodo = (mMetodo, metodoObjetivo) => {
+    const actual = mMetodo || "Efectivo";
+    if (metodoObjetivo === "Transferencia" || metodoObjetivo === "Transferencia bancaria") {
+      return actual === "Transferencia" || actual === "Transferencia bancaria";
+    }
+    if (metodoObjetivo === "Tarjeta crédito" || metodoObjetivo === "Tarjeta de crédito") {
+      return actual === "Tarjeta crédito" || actual === "Tarjeta de crédito";
+    }
+    return actual === metodoObjetivo;
+  };
+
   const porMetodoPago = METODOS_PAGO_CONTABLE.map((metodo) => {
     const ing = listaIngresos
-      .filter((m) => (m.metodoPago || "Efectivo") === metodo)
+      .filter((m) => coincideMetodo(m.metodoPago, metodo))
       .reduce((acc, m) => acc + roundCOP(m.valor ?? m.monto), 0);
     const gas = listaGastos
-      .filter((m) => (m.metodoPago || "Efectivo") === metodo)
+      .filter((m) => coincideMetodo(m.metodoPago, metodo))
       .reduce((acc, m) => acc + roundCOP(m.valor ?? m.monto), 0);
     return {
       metodo,
@@ -485,7 +518,11 @@ export async function registrarMovimientoContable(
     if (
       tipo === TIPOS_CONTABLE.INGRESO &&
       pedidoLimpio &&
-      (categoria === "Anticipos de clientes" || categoria === "Abonos de instalaciones" || totalPedidoNum > 0)
+      (categoria === "Anticipo de cliente" ||
+        categoria === "Anticipos de clientes" ||
+        categoria === "Abono de instalación" ||
+        categoria === "Abonos de instalaciones" ||
+        totalPedidoNum > 0)
     ) {
       const abonosPrevios = existentes.filter(
         (m) =>
