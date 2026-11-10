@@ -18,6 +18,7 @@ import {
 import {
   FIRESTORE_COLLECTIONS_SCHEMA,
   traducirErrorFirebase,
+  verificarConexionRealFirebase,
   inspeccionarDatosLocalStorage,
   generarPropuestaMigracionLocalStorage,
   ejecutarMigracionAutorizadaAFirestore
@@ -767,17 +768,20 @@ export async function runAll25Tests() {
 
   // 37. Prueba 2 y 16 (Sección 15): Estado de conexión Firebase y manejo de errores de red sin corromper datos
   await step(37, "Detectar estado de Firebase y proteger la integridad ante errores de red", async () => {
-    const statusLocal = getFirebaseStatus();
-    assert(statusLocal.connected === false && statusLocal.mode === "local-pending", "Debe informar que Firebase está pendiente de configurar");
+    const statusConfigurado = getFirebaseStatus();
+    assert(
+      statusConfigurado.connected === true && statusConfigurado.projectId === "inventario-10d9e",
+      "Debe detectar la configuración activa del proyecto Firebase inventario-10d9e"
+    );
 
     setFirebaseConfigOverride({
-      apiKey: "AIzaSyTestPublicKey123456",
-      authDomain: "elcarmen-prod.firebaseapp.com",
-      projectId: "elcarmen-prod",
-      appId: "1:123456:web:abcdef"
+      apiKey: "",
+      authDomain: "",
+      projectId: "",
+      appId: ""
     });
-    const statusConfigurado = getFirebaseStatus();
-    assert(statusConfigurado.connected === true && statusConfigurado.projectId === "elcarmen-prod", "Debe detectar configuración válida de Firebase");
+    const statusLocal = getFirebaseStatus();
+    assert(statusLocal.connected === false && statusLocal.mode === "local-pending", "Debe informar cuando Firebase no tiene credenciales");
     setFirebaseConfigOverride(null);
 
     // Simular caída de red y comprobar que una escritura se rechaza sin alterar datos
@@ -1107,6 +1111,13 @@ export async function runAll25Tests() {
     await assertThrows(
       () => ejecutarMigracionAutorizadaAFirestore({ autorizadoPorUsuario: false }),
       "autorización expresa"
+    );
+
+    // Verificar estado de conexión real con el proyecto inventario-10d9e
+    const estadoReal = await verificarConexionRealFirebase();
+    assert(
+      estadoReal.configurado === true && estadoReal.projectId === "inventario-10d9e",
+      `Debe conectarse con el proyecto inventario-10d9e (${estadoReal.mensaje})`
     );
   });
 

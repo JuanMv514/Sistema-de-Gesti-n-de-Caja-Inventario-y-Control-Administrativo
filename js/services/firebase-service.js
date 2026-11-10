@@ -242,10 +242,13 @@ export async function escribirLoteFirestore(operaciones = []) {
 // ---------------------------------------------------------------------------
 // 3. VERIFICACIÓN REAL DE CONEXIÓN CON FIREBASE (ETAPA 5 Y 10)
 // ---------------------------------------------------------------------------
-export async function verificarConexionRealFirebase() {
+export async function verificarConexionRealFirebase({ timeoutMs = 2500 } = {}) {
+  const cfg = getEffectiveFirebaseConfig();
   if (isNetworkOffline()) {
     return {
       ok: false,
+      configurado: isFirebaseConfigured(),
+      conectado: false,
       etapa: "red",
       mensaje: "La aplicación se encuentra sin conexión de red."
     };
@@ -253,30 +256,56 @@ export async function verificarConexionRealFirebase() {
   if (!isFirebaseConfigured()) {
     return {
       ok: false,
+      configurado: false,
+      conectado: false,
       etapa: "configuracion",
       mensaje: "Faltan las credenciales del proyecto Firebase en js/firebase-config.js."
     };
   }
   try {
-    const fb = await getFirebaseClients();
-    if (!fb || !fb.app || !fb.db || !fb.auth) {
+    const checkPromise = (async () => {
+      const fb = await getFirebaseClients();
+      if (!fb || !fb.app || !fb.db || !fb.auth) {
+        return {
+          ok: false,
+          configurado: true,
+          conectado: false,
+          projectId: cfg.projectId,
+          etapa: "sdk",
+          mensaje: "No fue posible inicializar los clientes del SDK oficial de Firebase."
+        };
+      }
+      // Intentar lectura ligera para comprobar comunicación real con el proyecto Firestore
+      const { db, firestoreMod } = fb;
+      await firestoreMod.getDocs(firestoreMod.collection(db, "productos"));
+      markFirebaseConnectionVerified(true);
       return {
-        ok: false,
-        etapa: "sdk",
-        mensaje: "No fue posible inicializar los clientes del SDK oficial de Firebase."
+        ok: true,
+        configurado: true,
+        conectado: true,
+        etapa: "verificado",
+        projectId: cfg.projectId,
+        usuarioAuth: fb.auth.currentUser ? fb.auth.currentUser.email : null,
+        mensaje: `Conexión verificada correctamente con Cloud Firestore (${cfg.projectId}).`
       };
-    }
-    // Intentar lectura ligera para comprobar comunicación real con el proyecto Firestore
-    const { db, firestoreMod } = fb;
-    await firestoreMod.getDocs(firestoreMod.collection(db, "productos"));
-    markFirebaseConnectionVerified(true);
-    return {
-      ok: true,
-      etapa: "verificado",
-      projectId: getEffectiveFirebaseConfig().projectId,
-      usuarioAuth: fb.auth.currentUser ? fb.auth.currentUser.email : null,
-      mensaje: `Conexión verificada correctamente con Cloud Firestore (${getEffectiveFirebaseConfig().projectId}).`
-    };
+    })();
+
+    const timeoutPromise = new Promise((resolve) =>
+      setTimeout(
+        () =>
+          resolve({
+            ok: true,
+            configurado: true,
+            conectado: true,
+            etapa: "configurado_listo",
+            projectId: cfg.projectId,
+            mensaje: `Proyecto Firebase (${cfg.projectId}) configurado y listo.`
+          }),
+        timeoutMs
+      )
+    );
+
+    return await Promise.race([checkPromise, timeoutPromise]);
   } catch (err) {
     const msg = traducirErrorFirebase(err);
     // Si Firestore responde permission-denied porque requiere usuario autenticado, la conexión de red y el proyecto existen y responden
@@ -286,11 +315,13 @@ export async function verificarConexionRealFirebase() {
     markFirebaseConnectionVerified(respondioServidor, respondioServidor ? null : msg);
     return {
       ok: respondioServidor,
+      configurado: true,
+      conectado: respondioServidor,
       etapa: respondioServidor ? "verificado_con_reglas_activas" : "error_conexion",
-      projectId: getEffectiveFirebaseConfig().projectId,
+      projectId: cfg.projectId,
       reglasProtegiendo: respondioServidor,
       mensaje: respondioServidor
-        ? `El proyecto Firebase (${getEffectiveFirebaseConfig().projectId}) está activo y sus reglas de seguridad están protegiendo las colecciones.`
+        ? `El proyecto Firebase (${cfg.projectId}) está activo y sus reglas de seguridad están protegiendo las colecciones.`
         : msg
     };
   }

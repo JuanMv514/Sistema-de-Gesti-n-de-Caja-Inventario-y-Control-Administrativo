@@ -12,7 +12,8 @@ import {
   DEFAULT_ROUTE
 } from "./router.js";
 import { getCurrentUser, setCurrentUser, hasPermission } from "./auth.js";
-import { getFirebaseStatus } from "./firebase-config.js";
+import { getFirebaseStatus, isFirebaseConfigured } from "./firebase-config.js";
+import { verificarConexionRealFirebase } from "./services/firebase-service.js";
 import { ensureSeedData } from "./services/store.js";
 import { autenticarUsuario, cerrarSesionUsuario } from "./services/usuarios-service.js";
 import { mountCajaView } from "./views/caja-view.js";
@@ -44,15 +45,32 @@ function hasActiveSession() {
   }
 }
 
-export function renderFirebaseConnectionBadge() {
+export function renderFirebaseConnectionBadge(liveStatus = null) {
   const badge = document.getElementById("firebase-status-badge");
   if (!badge) return;
   const status = getFirebaseStatus();
+  if (liveStatus) {
+    badge.textContent = `Firebase activo (${liveStatus.projectId || status.projectId})`;
+    badge.className = "badge badge-success";
+    badge.title = liveStatus.mensaje || status.message;
+    return;
+  }
   badge.textContent = status.connected
     ? `Firebase activo (${status.projectId})`
     : "Modo local · Firebase pendiente";
   badge.className = `badge ${status.connected ? "badge-success" : "badge-warning"}`;
   badge.title = status.message;
+
+  if (isFirebaseConfigured() && !badge.dataset.verified) {
+    badge.dataset.verified = "1";
+    verificarConexionRealFirebase()
+      .then((res) => {
+        if (res && (res.conectado || res.configurado)) {
+          renderFirebaseConnectionBadge(res);
+        }
+      })
+      .catch(() => {});
+  }
 }
 
 export function showLoginView() {

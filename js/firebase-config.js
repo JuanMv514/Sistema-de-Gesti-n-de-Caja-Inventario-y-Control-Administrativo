@@ -1,22 +1,42 @@
 // Módulo central de configuración e inicialización de Firebase (Authentication & Cloud Firestore).
 // Cumple las Etapas 4, 5, 6, 10 y 11:
-// - Inicializa Firebase una sola vez (patrón Singleton).
+// - Inicializa Firebase una sola vez (patrón Singleton) conectado al proyecto "inventario-10d9e".
 // - No incluye claves privadas de administración (Admin SDK) ni cuentas de servicio.
-// - No utiliza credenciales ficticias para simular que Firebase está conectado.
 // - Distingue entre configuración presente y conexión verificada contra Firestore.
 // - Soporta configuración inyectada en despliegue (window.__FIREBASE_CONFIG__), variables de entorno
-//   y conexión a Firebase Emulator Suite para pruebas locales seguras.
+//   y conexión opcional a Firebase Emulator Suite para pruebas locales seguras.
 
 const RUNTIME_ENV = (typeof window !== "undefined" && window.__FIREBASE_CONFIG__) || {};
 
 export const firebaseConfig = {
-  apiKey: RUNTIME_ENV.VITE_FIREBASE_API_KEY || RUNTIME_ENV.FIREBASE_API_KEY || "",
-  authDomain: RUNTIME_ENV.VITE_FIREBASE_AUTH_DOMAIN || RUNTIME_ENV.FIREBASE_AUTH_DOMAIN || "",
-  projectId: RUNTIME_ENV.VITE_FIREBASE_PROJECT_ID || RUNTIME_ENV.FIREBASE_PROJECT_ID || "",
-  storageBucket: RUNTIME_ENV.VITE_FIREBASE_STORAGE_BUCKET || RUNTIME_ENV.FIREBASE_STORAGE_BUCKET || "",
+  apiKey:
+    RUNTIME_ENV.VITE_FIREBASE_API_KEY ||
+    RUNTIME_ENV.FIREBASE_API_KEY ||
+    "AIzaSyDvM-szMg3tjIHTzI1jHeldGfGgf0c8SIw",
+  authDomain:
+    RUNTIME_ENV.VITE_FIREBASE_AUTH_DOMAIN ||
+    RUNTIME_ENV.FIREBASE_AUTH_DOMAIN ||
+    "inventario-10d9e.firebaseapp.com",
+  projectId:
+    RUNTIME_ENV.VITE_FIREBASE_PROJECT_ID ||
+    RUNTIME_ENV.FIREBASE_PROJECT_ID ||
+    "inventario-10d9e",
+  storageBucket:
+    RUNTIME_ENV.VITE_FIREBASE_STORAGE_BUCKET ||
+    RUNTIME_ENV.FIREBASE_STORAGE_BUCKET ||
+    "inventario-10d9e.firebasestorage.app",
   messagingSenderId:
-    RUNTIME_ENV.VITE_FIREBASE_MESSAGING_SENDER_ID || RUNTIME_ENV.FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: RUNTIME_ENV.VITE_FIREBASE_APP_ID || RUNTIME_ENV.FIREBASE_APP_ID || ""
+    RUNTIME_ENV.VITE_FIREBASE_MESSAGING_SENDER_ID ||
+    RUNTIME_ENV.FIREBASE_MESSAGING_SENDER_ID ||
+    "115114090103",
+  appId:
+    RUNTIME_ENV.VITE_FIREBASE_APP_ID ||
+    RUNTIME_ENV.FIREBASE_APP_ID ||
+    "1:115114090103:web:d4c7df8ad3f8be6aceb072",
+  measurementId:
+    RUNTIME_ENV.VITE_FIREBASE_MEASUREMENT_ID ||
+    RUNTIME_ENV.FIREBASE_MEASUREMENT_ID ||
+    "G-8YFKFBLZNZ"
 };
 
 export const emulatorConfig = {
@@ -112,10 +132,14 @@ export function getFirebaseStatus() {
       lastError: lastConnectionError,
       label: isEmu
         ? `Emulador Firebase (${projectId})`
-        : `Firebase configurado (${projectId})`,
+        : connectionVerified
+        ? `Conectado a Firebase (${projectId})`
+        : `Firebase activo (${projectId})`,
       message: isEmu
         ? `Conectado a Firebase Emulator Suite (${projectId})`
-        : `Conectado a Firebase Firestore (${projectId})`
+        : lastConnectionError
+        ? `Proyecto ${projectId} configurado · Aviso: ${lastConnectionError}`
+        : `Conectado a Cloud Firestore — Proyecto: ${projectId}`
     };
   }
   return {

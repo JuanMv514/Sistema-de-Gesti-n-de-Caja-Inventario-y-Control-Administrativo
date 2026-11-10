@@ -242,6 +242,10 @@ let memoryStore = null;
 let inMemoryTestMode = false;
 const activeLocks = new Set();
 
+export function isInMemoryTestMode() {
+  return inMemoryTestMode;
+}
+
 function getStorage() {
   if (inMemoryTestMode) return null;
   try {
@@ -277,7 +281,6 @@ function readCollectionRaw(colName) {
 function writeCollectionRaw(colName, docs) {
   if (!inMemoryTestMode && isFirebaseConfigured()) {
     firestoreCache[colName] = JSON.parse(JSON.stringify(docs));
-    return;
   }
   const storage = getStorage();
   if (storage) {

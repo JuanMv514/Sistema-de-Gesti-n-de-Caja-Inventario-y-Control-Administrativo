@@ -7,7 +7,8 @@ import {
   COLLECTIONS,
   getCollection,
   subscribeCollection,
-  runAtomicTransaction
+  runAtomicTransaction,
+  isInMemoryTestMode
 } from "./store.js";
 import {
   ROLES,
@@ -16,6 +17,7 @@ import {
   assertPermission
 } from "../auth.js";
 import { isFirebaseConfigured, getFirebaseClients } from "../firebase-config.js";
+import { traducirErrorFirebase } from "./firebase-service.js";
 
 export const ROLES_DISPONIBLES = [
   ROLES.ADMIN,
@@ -50,28 +52,40 @@ export async function autenticarUsuario({ email, password }) {
   if (!correo) throw new Error("Ingresa tu correo electrónico.");
   if (!clave || clave.length < 4) throw new Error("Ingresa una contraseña válida.");
 
-  if (isFirebaseConfigured()) {
+  if (!isInMemoryTestMode() && isFirebaseConfigured()) {
     const fb = await getFirebaseClients();
     if (fb) {
-      const cred = await fb.authMod.signInWithEmailAndPassword(fb.auth, correo, clave);
-      const fbUser = cred.user;
-      const lista = listarUsuarios();
-      const perfil = lista.find(
-        (u) => u.uid === fbUser.uid || String(u.email || "").toLowerCase() === correo
-      );
-      if (perfil && perfil.activo === false) {
-        await fb.authMod.signOut(fb.auth);
-        throw new Error("Tu cuenta está desactivada. Contacta al Administrador.");
+      try {
+        const cred = await fb.authMod.signInWithEmailAndPassword(fb.auth, correo, clave);
+        const fbUser = cred.user;
+        const lista = listarUsuarios();
+        const perfil = lista.find(
+          (u) => u.uid === fbUser.uid || String(u.email || "").toLowerCase() === correo
+        );
+        if (perfil && perfil.activo === false) {
+          await fb.authMod.signOut(fb.auth);
+          throw new Error("Tu cuenta está desactivada. Contacta al Administrador.");
+        }
+        const sesion = {
+          uid: fbUser.uid,
+          email: correo,
+          name: perfil?.nombre || fbUser.displayName || correo.split("@")[0],
+          role: perfil?.rol || (correo.startsWith("admin") ? ROLES.ADMIN : ROLES.CAJERO),
+          activo: true
+        };
+        setCurrentUser(sesion);
+        return sesion;
+      } catch (err) {
+        const code = String(err?.code || "");
+        // Si el método Correo/Contraseña aún no se ha activado en Firebase Console, permitir acceso local temporal
+        if (code === "auth/configuration-not-found" || code === "auth/operation-not-allowed") {
+          console.warn(
+            "Firebase Authentication (Correo/Contraseña) aún no está habilitado en Firebase Console. Usando sesión local temporal."
+          );
+        } else {
+          throw new Error(traducirErrorFirebase(err));
+        }
       }
-      const sesion = {
-        uid: fbUser.uid,
-        email: correo,
-        name: perfil?.nombre || fbUser.displayName || correo.split("@")[0],
-        role: perfil?.rol || ROLES.CAJERO,
-        activo: true
-      };
-      setCurrentUser(sesion);
-      return sesion;
     }
   }
 
@@ -117,7 +131,7 @@ export async function autenticarUsuario({ email, password }) {
 }
 
 export async function cerrarSesionUsuario() {
-  if (isFirebaseConfigured()) {
+  if (!isInMemoryTestMode() && isFirebaseConfigured()) {
     try {
       const fb = await getFirebaseClients();
       if (fb) await fb.authMod.signOut(fb.auth);
