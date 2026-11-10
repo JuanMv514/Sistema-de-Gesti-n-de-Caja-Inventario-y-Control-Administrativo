@@ -16,6 +16,13 @@ import {
   setFirebaseConfigOverride
 } from "../js/firebase-config.js";
 import {
+  FIRESTORE_COLLECTIONS_SCHEMA,
+  traducirErrorFirebase,
+  inspeccionarDatosLocalStorage,
+  generarPropuestaMigracionLocalStorage,
+  ejecutarMigracionAutorizadaAFirestore
+} from "../js/services/firebase-service.js";
+import {
   listarProductos,
   filtrarCatalogo,
   calcularAreaM2,
@@ -1078,6 +1085,28 @@ export async function runAll25Tests() {
     assert(
       filtroCat.length >= 2,
       "El filtro por 'Anticipo de cliente' debe encontrar tanto 'Anticipo de cliente' como 'Anticipos de clientes'"
+    );
+  });
+
+  // 46. Firebase Setup (Etapas 4, 6, 7, 9 y 10): Esquema de colecciones, traducción de errores e inspección/bloqueo de migración sin autorización
+  await step(46, "Firebase Setup: Verificar esquema de 9 colecciones, traducción de errores y bloqueo de migración sin autorización", async () => {
+    const colsEsquema = Object.keys(FIRESTORE_COLLECTIONS_SCHEMA);
+    assert(colsEsquema.length === 9, `Deben existir las 9 colecciones del negocio en el esquema (encontradas: ${colsEsquema.length})`);
+
+    const msgPermiso = traducirErrorFirebase({ code: "permission-denied", message: "Missing or insufficient permissions." });
+    assert(msgPermiso.includes("reglas de seguridad"), "Debe traducir permission-denied a un mensaje comprensible");
+
+    const msgAuth = traducirErrorFirebase({ code: "auth/invalid-credential" });
+    assert(msgAuth.includes("incorrectos"), "Debe traducir auth/invalid-credential a español claro");
+
+    const propuesta = generarPropuestaMigracionLocalStorage();
+    assert(propuesta.requiereAutorizacionExpresa === true, "La propuesta de migración debe exigir autorización expresa");
+    assert(Array.isArray(propuesta.resumenColecciones) && propuesta.resumenColecciones.length === 9, "Debe auditar las 9 colecciones");
+
+    // Impedir migración automática o sin autorización expresa
+    await assertThrows(
+      () => ejecutarMigracionAutorizadaAFirestore({ autorizadoPorUsuario: false }),
+      "autorización expresa"
     );
   });
 
