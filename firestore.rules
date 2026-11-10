@@ -100,12 +100,13 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Movimientos contables (Ingresos y Gastos)
+    // Movimientos contables (Ingresos, Gastos y Traslados internos; nunca se eliminan físicamente)
     match /movimientos_contables/{movId} {
       allow read: if isActiveUser();
-      allow create: if canManageAccounting() || canManageCashAndSales()
-        && request.resource.data.monto > 0;
-      allow update: if isAdmin();
+      allow create: if (canManageAccounting() || canManageCashAndSales())
+        && (request.resource.data.monto > 0 || request.resource.data.valor > 0);
+      allow update: if isAdmin()
+        && request.resource.data.monto == resource.data.monto;
       allow delete: if false;
     }
 
