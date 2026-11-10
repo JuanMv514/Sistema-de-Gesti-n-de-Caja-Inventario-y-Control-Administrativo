@@ -1,10 +1,11 @@
 // Módulo central de configuración e inicialización de Firebase (Authentication & Cloud Firestore).
-// Cumple la Sección 4:
-// - Inicializa Firebase una sola vez.
-// - No incluye claves privadas de administración ni cuentas de servicio.
-// - No utiliza credenciales ficticias para simular conexión activa.
+// Cumple las Etapas 4, 5, 6, 10 y 11:
+// - Inicializa Firebase una sola vez (patrón Singleton).
+// - No incluye claves privadas de administración (Admin SDK) ni cuentas de servicio.
+// - No utiliza credenciales ficticias para simular que Firebase está conectado.
+// - Distingue entre configuración presente y conexión verificada contra Firestore.
 // - Soporta configuración inyectada en despliegue (window.__FIREBASE_CONFIG__), variables de entorno
-//   y conexión opcional a Firebase Emulator Suite para pruebas locales.
+//   y conexión a Firebase Emulator Suite para pruebas locales seguras.
 
 const RUNTIME_ENV = (typeof window !== "undefined" && window.__FIREBASE_CONFIG__) || {};
 
@@ -13,7 +14,8 @@ export const firebaseConfig = {
   authDomain: RUNTIME_ENV.VITE_FIREBASE_AUTH_DOMAIN || RUNTIME_ENV.FIREBASE_AUTH_DOMAIN || "",
   projectId: RUNTIME_ENV.VITE_FIREBASE_PROJECT_ID || RUNTIME_ENV.FIREBASE_PROJECT_ID || "",
   storageBucket: RUNTIME_ENV.VITE_FIREBASE_STORAGE_BUCKET || RUNTIME_ENV.FIREBASE_STORAGE_BUCKET || "",
-  messagingSenderId: RUNTIME_ENV.VITE_FIREBASE_MESSAGING_SENDER_ID || RUNTIME_ENV.FIREBASE_MESSAGING_SENDER_ID || "",
+  messagingSenderId:
+    RUNTIME_ENV.VITE_FIREBASE_MESSAGING_SENDER_ID || RUNTIME_ENV.FIREBASE_MESSAGING_SENDER_ID || "",
   appId: RUNTIME_ENV.VITE_FIREBASE_APP_ID || RUNTIME_ENV.FIREBASE_APP_ID || ""
 };
 
@@ -26,6 +28,10 @@ export const emulatorConfig = {
 
 let simulatedOffline = false;
 let manualConnectionOverride = null;
+let connectionVerified = false;
+let lastConnectionError = null;
+let firebaseClientsPromise = null;
+let emulatorsConnected = false;
 
 export function setSimulatedNetworkOffline(isOffline) {
   simulatedOffline = Boolean(isOffline);
@@ -37,6 +43,20 @@ export function isNetworkOffline() {
 
 export function setFirebaseConfigOverride(customConfig) {
   manualConnectionOverride = customConfig;
+  connectionVerified = false;
+  lastConnectionError = null;
+  firebaseClientsPromise = null;
+}
+
+export function setEmulatorConfig(partialConfig = {}) {
+  Object.assign(emulatorConfig, partialConfig);
+  firebaseClientsPromise = null;
+  emulatorsConnected = false;
+}
+
+export function markFirebaseConnectionVerified(verified, errorMsg = null) {
+  connectionVerified = Boolean(verified);
+  lastConnectionError = errorMsg ? String(errorMsg) : null;
 }
 
 export function getEffectiveFirebaseConfig() {
@@ -65,7 +85,7 @@ export function getMissingFirebaseEnvVars() {
     ["FIREBASE_APP_ID", cfg.appId]
   ];
   return required
-    .filter(([, val]) => !val || String(val).startsWith("TU_"))
+    .filter(([, val]) => !val || String(val).startsWith("TU_") || String(val).startsWith("PENDIENTE"))
     .map(([name]) => name);
 }
 
@@ -73,30 +93,42 @@ export function getFirebaseStatus() {
   if (simulatedOffline) {
     return {
       connected: false,
+      configured: isFirebaseConfigured(),
+      verified: false,
       mode: "offline-error",
+      label: "Sin conexión de red",
       message: "Sin conexión con el servidor de datos. Verifica tu red."
     };
   }
   if (isFirebaseConfigured()) {
+    const projectId = getEffectiveFirebaseConfig().projectId;
+    const isEmu = Boolean(emulatorConfig.enabled);
     return {
       connected: true,
-      mode: emulatorConfig.enabled ? "emulator" : "cloud",
-      projectId: getEffectiveFirebaseConfig().projectId,
-      message: emulatorConfig.enabled
-        ? `Conectado a Firebase Emulator Suite (${getEffectiveFirebaseConfig().projectId})`
-        : `Conectado a Firebase Firestore (${getEffectiveFirebaseConfig().projectId})`
+      configured: true,
+      verified: connectionVerified,
+      mode: isEmu ? "emulator" : "cloud",
+      projectId,
+      lastError: lastConnectionError,
+      label: isEmu
+        ? `Emulador Firebase (${projectId})`
+        : `Firebase configurado (${projectId})`,
+      message: isEmu
+        ? `Conectado a Firebase Emulator Suite (${projectId})`
+        : `Conectado a Firebase Firestore (${projectId})`
     };
   }
   return {
     connected: false,
+    configured: false,
+    verified: false,
     mode: "local-pending",
     missingVars: getMissingFirebaseEnvVars(),
-    message: "Firebase todavía no está configurado · Operando en almacenamiento local de desarrollo"
+    label: "Pendiente configurar Firebase",
+    message:
+      "Firebase todavía no está conectado · Operando en almacenamiento local hasta completar credenciales del proyecto en js/firebase-config.js"
   };
 }
-
-let firebaseClientsPromise = null;
-let emulatorsConnected = false;
 
 export async function getFirebaseClients() {
   if (simulatedOffline) {
@@ -106,28 +138,39 @@ export async function getFirebaseClients() {
 
   if (!firebaseClientsPromise) {
     firebaseClientsPromise = (async () => {
-      const [{ initializeApp, getApps, getApp }, authMod, firestoreMod] = await Promise.all([
-        import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
-        import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
-        import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")
-      ]);
-      const app = getApps().length ? getApp() : initializeApp(getEffectiveFirebaseConfig());
-      const auth = authMod.getAuth(app);
-      const db = firestoreMod.getFirestore(app);
+      try {
+        const [{ initializeApp, getApps, getApp }, authMod, firestoreMod] = await Promise.all([
+          import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
+          import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
+          import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")
+        ]);
+        const cfg = getEffectiveFirebaseConfig();
+        const app = getApps().length ? getApp() : initializeApp(cfg);
+        const auth = authMod.getAuth(app);
+        const db = firestoreMod.getFirestore(app);
 
-      if (emulatorConfig.enabled && !emulatorsConnected) {
-        authMod.connectAuthEmulator(auth, emulatorConfig.authUrl, { disableWarnings: true });
-        firestoreMod.connectFirestoreEmulator(db, emulatorConfig.firestoreHost, emulatorConfig.firestorePort);
-        emulatorsConnected = true;
+        if (emulatorConfig.enabled && !emulatorsConnected) {
+          authMod.connectAuthEmulator(auth, emulatorConfig.authUrl, { disableWarnings: true });
+          firestoreMod.connectFirestoreEmulator(
+            db,
+            emulatorConfig.firestoreHost,
+            emulatorConfig.firestorePort
+          );
+          emulatorsConnected = true;
+        }
+
+        return {
+          app,
+          auth,
+          db,
+          authMod,
+          firestoreMod
+        };
+      } catch (err) {
+        firebaseClientsPromise = null;
+        markFirebaseConnectionVerified(false, err.message);
+        throw err;
       }
-
-      return {
-        app,
-        auth,
-        db,
-        authMod,
-        firestoreMod
-      };
     })();
   }
   return firebaseClientsPromise;

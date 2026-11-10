@@ -8,9 +8,12 @@
 
 import {
   isFirebaseConfigured,
-  getFirebaseClients,
   isNetworkOffline
 } from "../firebase-config.js";
+import {
+  escribirLoteFirestore,
+  suscribirColeccionFirestore
+} from "./firebase-service.js";
 
 const LEGACY_STORAGE_PREFIXES = ["elcarmen_db_v1_", "elcarmen_real_v2_"];
 const STORAGE_PREFIX = "elcarmen_clean_v3_";
@@ -233,6 +236,8 @@ export const INITIAL_USUARIOS = [
 ];
 
 const listeners = new Map();
+const firestoreUnsubscribers = new Map();
+let firestoreCache = {};
 let memoryStore = null;
 let inMemoryTestMode = false;
 const activeLocks = new Set();
@@ -241,15 +246,6 @@ function getStorage() {
   if (inMemoryTestMode) return null;
   try {
     if (typeof localStorage !== "undefined") {
-      // Asegurar que las claves antiguas de productos queden como arreglo vacío "[]" (y no null)
-      // para impedir que cualquier módulo en caché vuelva a sembrar INITIAL_PRODUCTOS.
-      for (const oldPrefix of LEGACY_STORAGE_PREFIXES) {
-        const oldProdKey = `${oldPrefix}productos`;
-        const raw = localStorage.getItem(oldProdKey);
-        if (raw && raw.includes("prod-vt006")) {
-          localStorage.setItem(oldProdKey, "[]");
-        }
-      }
       return localStorage;
     }
   } catch {
@@ -259,6 +255,9 @@ function getStorage() {
 }
 
 function readCollectionRaw(colName) {
+  if (!inMemoryTestMode && isFirebaseConfigured() && Array.isArray(firestoreCache[colName])) {
+    return firestoreCache[colName];
+  }
   const storage = getStorage();
   if (storage) {
     const raw = storage.getItem(STORAGE_PREFIX + colName);
@@ -276,6 +275,10 @@ function readCollectionRaw(colName) {
 }
 
 function writeCollectionRaw(colName, docs) {
+  if (!inMemoryTestMode && isFirebaseConfigured()) {
+    firestoreCache[colName] = JSON.parse(JSON.stringify(docs));
+    return;
+  }
   const storage = getStorage();
   if (storage) {
     storage.setItem(STORAGE_PREFIX + colName, JSON.stringify(docs));
@@ -285,7 +288,8 @@ function writeCollectionRaw(colName, docs) {
   }
 }
 
-// En la aplicación real NO se inyectan productos, ventas, cajas ni movimientos ficticios.
+// En la aplicación real NO se inyectan productos, ventas, cajas ni movimientos ficticios,
+// ni se eliminan o sobrescriben datos existentes del usuario en localStorage (Etapa 9).
 export function ensureSeedData() {
   if (inMemoryTestMode) {
     if (!readCollectionRaw(COLLECTIONS.PRODUCTOS)) {
@@ -297,15 +301,7 @@ export function ensureSeedData() {
     if (!readCollectionRaw(COLLECTIONS.USUARIOS)) {
       writeCollectionRaw(COLLECTIONS.USUARIOS, INITIAL_USUARIOS);
     }
-  } else {
-    // Si hubiera quedado algún producto de demostración en el almacenamiento local, eliminarlo
-    const prodsActuales = readCollectionRaw(COLLECTIONS.PRODUCTOS);
-    if (Array.isArray(prodsActuales) && prodsActuales.some((p) => DEMO_PRODUCT_IDS.has(p.id))) {
-      writeCollectionRaw(
-        COLLECTIONS.PRODUCTOS,
-        prodsActuales.filter((p) => !DEMO_PRODUCT_IDS.has(p.id))
-      );
-    }
+  } else if (!isFirebaseConfigured()) {
     if (!readCollectionRaw(COLLECTIONS.CLIENTES)) {
       writeCollectionRaw(COLLECTIONS.CLIENTES, [
         {
@@ -387,6 +383,23 @@ export function subscribeCollection(colName, callback) {
   if (!listeners.has(colName)) listeners.set(colName, new Set());
   const subs = listeners.get(colName);
   subs.add(callback);
+
+  // Si Firebase está configurado (y no estamos en modo de prueba en memoria), activar listener onSnapshot de Firestore
+  if (!inMemoryTestMode && isFirebaseConfigured() && !firestoreUnsubscribers.has(colName)) {
+    suscribirColeccionFirestore(
+      colName,
+      (remoteDocs) => {
+        firestoreCache[colName] = remoteDocs;
+        notifyListeners(colName);
+      },
+      (err) => {
+        console.warn(`Aviso en suscripción Firestore (${colName}):`, err.message);
+      }
+    ).then((unsub) => {
+      firestoreUnsubscribers.set(colName, unsub);
+    });
+  }
+
   try {
     callback(getCollection(colName));
   } catch (err) {
@@ -425,6 +438,7 @@ export async function runAtomicTransaction(workFn, options = {}) {
     }
 
     const touchedCollections = new Set();
+    const dirtyDocs = [];
 
     const tx = {
       getAll(colName) {
@@ -444,6 +458,7 @@ export async function runAtomicTransaction(workFn, options = {}) {
         list.push(newDoc);
         snapshotBefore[colName] = list;
         touchedCollections.add(colName);
+        dirtyDocs.push({ collection: colName, id: newDoc.id, data: newDoc });
         return newDoc;
       },
       update(colName, id, patch) {
@@ -452,6 +467,7 @@ export async function runAtomicTransaction(workFn, options = {}) {
         if (idx === -1) throw new Error(`Registro no encontrado en ${colName}: ${id}`);
         list[idx] = { ...list[idx], ...JSON.parse(JSON.stringify(patch)), id };
         touchedCollections.add(colName);
+        dirtyDocs.push({ collection: colName, id, data: list[idx] });
         return list[idx];
       }
     };
@@ -463,22 +479,15 @@ export async function runAtomicTransaction(workFn, options = {}) {
       throw new Error("Se perdió la conexión de red antes de confirmar la escritura. No se guardaron cambios.");
     }
 
-    // Confirmar (commit) en almacenamiento local/transaccional
-    for (const col of touchedCollections) {
-      writeCollectionRaw(col, snapshotBefore[col]);
+    // Si Firebase está configurado en ejecución real, confirmar PRIMERO en Cloud Firestore mediante writeBatch
+    // antes de dar por guardada la operación (Etapa 4 y 13).
+    if (!inMemoryTestMode && isFirebaseConfigured() && dirtyDocs.length > 0) {
+      await escribirLoteFirestore(dirtyDocs);
     }
 
-    // Sincronizar con Cloud Firestore si las credenciales reales están configuradas
-    if (isFirebaseConfigured()) {
-      const fb = await getFirebaseClients();
-      if (fb) {
-        const { db, firestoreMod } = fb;
-        for (const col of touchedCollections) {
-          for (const item of snapshotBefore[col]) {
-            await firestoreMod.setDoc(firestoreMod.doc(db, col, item.id), item, { merge: true });
-          }
-        }
-      }
+    // Confirmar (commit) en almacenamiento activo
+    for (const col of touchedCollections) {
+      writeCollectionRaw(col, snapshotBefore[col]);
     }
 
     for (const col of touchedCollections) {
