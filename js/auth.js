@@ -70,7 +70,26 @@ const ROLE_PERMISSIONS = {
 export function getCurrentUser() {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const correo = String(parsed?.email || "").toLowerCase();
+      // Si el propietario ingresó con el correo del negocio (ej. vidrios.aluminioselcarmen) antes de crear usuarios, asegurar rol Administrador
+      if (
+        parsed &&
+        parsed.role === ROLES.EMPLEADO &&
+        (correo.includes("vidrios") || correo.includes("elcarmen") || correo.startsWith("admin")) &&
+        !correo.startsWith("empleado") &&
+        !correo.startsWith("usuario") &&
+        !correo.startsWith("caja") &&
+        !correo.startsWith("bodega") &&
+        !correo.startsWith("inventario") &&
+        !correo.startsWith("contabilidad")
+      ) {
+        parsed.role = ROLES.ADMIN;
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(parsed));
+      }
+      return parsed;
+    }
   } catch {
     // Ignorar error de sessionStorage
   }

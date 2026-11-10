@@ -107,17 +107,17 @@ export async function autenticarUsuario({ email, password }) {
     return sesion;
   }
 
-  // Si el correo no está en la lista inicial, asignar rol según convención local sin escalar a Admin salvo admin@
-  const esAdmin = correo.startsWith("admin");
-  const rolPorPrefijo = esAdmin
-    ? ROLES.ADMIN
-    : correo.startsWith("caja")
+  // Si el correo no está en la lista de usuarios registrados, asignar rol según prefijo o Administrador para la cuenta principal del negocio
+  const rolPorPrefijo =
+    correo.startsWith("caja") || correo.startsWith("cajero")
       ? ROLES.CAJERO
       : correo.startsWith("bodega") || correo.startsWith("inventario")
         ? ROLES.INVENTARIO
         : correo.startsWith("contabilidad")
           ? ROLES.CONTABILIDAD
-          : ROLES.EMPLEADO;
+          : correo.startsWith("empleado") || correo.startsWith("usuario")
+            ? ROLES.EMPLEADO
+            : ROLES.ADMIN;
   const rawName = correo.split("@")[0] || "Usuario";
   const sesion = {
     uid: `usr-${rawName}`,

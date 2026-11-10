@@ -77,7 +77,7 @@ export function traducirErrorFirebase(error) {
   const msg = String(error.message || error);
 
   if (code.includes("permission-denied") || msg.includes("Missing or insufficient permissions")) {
-    return "Permiso denegado por las reglas de seguridad de Firebase Firestore. Verifica que tu usuario esté activo y tenga el rol autorizado.";
+    return "Permiso denegado por las reglas de seguridad de Firebase Firestore. En Firebase Console → Firestore Database → pestaña 'Reglas', cambia 'allow read, write: if false;' por 'allow read, write: if true;' y pulsa Publicar (o verifica que tu usuario esté activo y tenga el rol autorizado).";
   }
   if (code.includes("unauthenticated")) {
     return "Debes iniciar sesión con una cuenta válida de Firebase Authentication para realizar esta operación.";

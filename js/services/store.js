@@ -304,7 +304,7 @@ export function ensureSeedData() {
     if (!readCollectionRaw(COLLECTIONS.USUARIOS)) {
       writeCollectionRaw(COLLECTIONS.USUARIOS, INITIAL_USUARIOS);
     }
-  } else if (!isFirebaseConfigured()) {
+  } else {
     if (!readCollectionRaw(COLLECTIONS.CLIENTES)) {
       writeCollectionRaw(COLLECTIONS.CLIENTES, [
         {
@@ -321,7 +321,7 @@ export function ensureSeedData() {
         {
           id: "usr-admin",
           uid: "usr-admin",
-          nombre: "Administrador",
+          nombre: "Administrador Principal",
           email: "admin@elcarmen.com",
           rol: "Administrador",
           activo: true,
