@@ -94,9 +94,9 @@ export function getCurrentUser() {
     // Ignorar error de sessionStorage
   }
   return {
-    uid: "usr-admin",
-    email: "admin@elcarmen.com",
-    name: "Administrador",
+    uid: "usr-owner",
+    email: "vidrios.aluminioselcarmen@gmail.com",
+    name: "Vidrios y Aluminios El Carmen",
     role: ROLES.ADMIN,
     activo: true
   };

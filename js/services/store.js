@@ -319,11 +319,12 @@ export function ensureSeedData() {
     if (!readCollectionRaw(COLLECTIONS.USUARIOS)) {
       writeCollectionRaw(COLLECTIONS.USUARIOS, [
         {
-          id: "usr-admin",
-          uid: "usr-admin",
-          nombre: "Administrador Principal",
-          email: "admin@elcarmen.com",
+          id: "usr-owner",
+          uid: "usr-owner",
+          nombre: "Vidrios y Aluminios El Carmen",
+          email: "vidrios.aluminioselcarmen@gmail.com",
           rol: "Administrador",
+          esPropietario: true,
           activo: true,
           creadoEn: new Date().toISOString()
         }
